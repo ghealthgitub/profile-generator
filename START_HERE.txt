@@ -1,0 +1,45 @@
+🫚 GINGER UNIVERSE - QUICK START 🫚
+
+==================================
+FOR WINDOWS USERS:
+==================================
+
+1. Double-click: start.bat
+2. Browser opens automatically!
+3. Login with:
+   - admin@ginger.healthcare
+   - GingerUniverse2026!
+
+==================================
+FOR MAC/LINUX USERS:
+==================================
+
+1. Open Terminal
+2. Run: bash start.sh
+3. Open browser: http://localhost:5000
+4. Login with:
+   - admin@ginger.healthcare
+   - GingerUniverse2026!
+
+==================================
+ALTERNATIVE (MANUAL):
+==================================
+
+1. Open Terminal/Command Prompt
+2. cd to this folder
+3. Run: pip install -r requirements.txt
+4. Run: python app.py
+5. Open: http://localhost:5000
+
+==================================
+NEED HELP?
+==================================
+
+Read: QUICKSTART.md
+Full docs: README.md
+
+==================================
+
+🎊 START GENERATING PROFILES! 🎊
+
+© 2026 ginger.healthcare
