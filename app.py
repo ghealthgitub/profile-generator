@@ -137,7 +137,11 @@ def generate():
         # Step 1: Scrape all URLs + include manual text
         scraped = scrape_multiple_urls(urls, manual_text=manual_text)
         if not scraped:
-            return jsonify({'error': 'Could not extract data. Try pasting the doctor\'s information manually.'}), 400
+            error_msg = 'Could not extract content from the given URL(s). '
+            if urls:
+                error_msg += 'The website may be JavaScript-rendered (React/Next.js) which blocks automated reading. '
+            error_msg += 'Please paste the doctor\'s information manually using the text box below the URL field.'
+            return jsonify({'error': error_msg}), 400
 
         # Step 2: Load treatment dictionary from DB
         treatments = get_treatment_dictionary()

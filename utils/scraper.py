@@ -117,6 +117,19 @@ def scrape_single_url(url, agent_index=0):
                 'method': 'json-ld'
             }
 
+        # ── Strategy 1b: Next.js __NEXT_DATA__ ───────────────
+        nextdata_text = extract_nextdata(soup)
+        if nextdata_text and len(nextdata_text) > 100:
+            semantic_text = extract_semantic_content(soup)
+            combined = f"[Page: {title}]\n\n--- Next.js Data ---\n{nextdata_text}"
+            if semantic_text and len(semantic_text) > 100:
+                combined += f"\n\n--- Page Content ---\n{semantic_text}"
+            return {
+                'text': combined[:8000],
+                'title': title,
+                'method': 'nextjs-data'
+            }
+
         # ── Strategy 2: Meta tags ────────────────────────────
         meta_text = extract_meta_tags(soup)
 
@@ -174,6 +187,87 @@ def scrape_single_url(url, agent_index=0):
 # ═══════════════════════════════════════════════════════════════
 # EXTRACTION STRATEGIES
 # ═══════════════════════════════════════════════════════════════
+
+def extract_nextdata(soup):
+    """
+    Extract data from Next.js __NEXT_DATA__ script tag.
+    Sites like maxhealthcare.in, many modern hospital sites use Next.js
+    which embeds all page props as JSON in a script tag.
+    """
+    script = soup.find('script', id='__NEXT_DATA__')
+    if not script or not script.string:
+        return ''
+
+    try:
+        data = json.loads(script.string)
+        props = data.get('props', {}).get('pageProps', {})
+        if not props:
+            return ''
+
+        parts = []
+
+        # Recursively extract text values from nested dicts/lists
+        def extract_strings(obj, prefix='', depth=0):
+            if depth > 6:
+                return
+            if isinstance(obj, str):
+                cleaned = obj.strip()
+                # Skip very short strings, URLs, IDs, HTML tags
+                if (len(cleaned) > 20 and
+                    not cleaned.startswith('http') and
+                    not cleaned.startswith('/') and
+                    not cleaned.startswith('<') and
+                    not cleaned.startswith('{') and
+                    'image' not in prefix.lower() and
+                    'url' not in prefix.lower() and
+                    'slug' not in prefix.lower() and
+                    'id' != prefix.lower() and
+                    '_id' not in prefix.lower()):
+                    parts.append(cleaned)
+                elif 5 < len(cleaned) <= 20 and prefix.lower() in (
+                    'name', 'title', 'designation', 'qualification',
+                    'degree', 'specialty', 'city', 'hospital', 'department',
+                    'experience', 'language', 'jobtitle', 'position'
+                ):
+                    parts.append(f"{prefix}: {cleaned}")
+            elif isinstance(obj, dict):
+                for k, v in obj.items():
+                    extract_strings(v, k, depth + 1)
+            elif isinstance(obj, list):
+                for item in obj[:50]:  # Cap at 50 items
+                    extract_strings(item, prefix, depth + 1)
+
+        # Look for doctor-specific keys first
+        doctor_keys = ['doctor', 'doctorDetail', 'doctorData', 'profileData',
+                       'doctorProfile', 'data', 'pageData', 'detail',
+                       'doctorInfo', 'profile']
+        target_data = None
+        for key in doctor_keys:
+            if key in props and props[key]:
+                target_data = props[key]
+                break
+
+        if target_data:
+            extract_strings(target_data)
+        else:
+            # Fallback: extract from all props
+            extract_strings(props)
+
+        # Deduplicate while preserving order
+        seen = set()
+        unique_parts = []
+        for p in parts:
+            normalized = p.lower().strip()
+            if normalized not in seen and len(normalized) > 3:
+                seen.add(normalized)
+                unique_parts.append(p)
+
+        return '\n'.join(unique_parts[:100])  # Cap at 100 entries
+
+    except (json.JSONDecodeError, TypeError, AttributeError) as e:
+        print(f"[Next.js Parse Error] {e}")
+        return ''
+
 
 def extract_jsonld(soup):
     """
