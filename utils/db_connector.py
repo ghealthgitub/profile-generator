@@ -462,7 +462,7 @@ def push_doctor_to_admin(data, profile_id=None, user_email=''):
                 return {'success': False, 'error': 'Doctor name is required'}
 
             slug = data.get('slug') or generate_doctor_slug(name)
-            title = data.get('title', 'Dr.')
+            title = data.get('designation', '') or data.get('title', 'Dr.')
             specialty_id = data.get('specialty_id')
             hospital_id = data.get('hospital_id')
             destination_id = data.get('destination_id')

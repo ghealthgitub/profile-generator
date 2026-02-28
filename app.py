@@ -402,6 +402,7 @@ Return JSON with these exact keys:
 {{
   "name": "Doctor full name without Dr./Prof. prefix",
   "title": "Dr." or "Prof." etc,
+  "designation": "Their role/position e.g. Senior Consultant, Director, Group Chairman, Head of Department etc.",
   "specialty": "Best matching specialty from the list above (exact name)",
   "hospital": "Best matching hospital from the list above (exact name)",
   "destination": "Best matching destination from the list above (exact name)",

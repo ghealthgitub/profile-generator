@@ -118,6 +118,8 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--gray-100);color
             </div>
         </div>
 
+        <div class="form-row"><label>Title / Designation</label><input type="text" class="form-input" id="pushDesignation" placeholder="e.g. Senior Consultant, Director, Group Chairman"></div>
+
         <div class="form-grid-3">
             <div class="form-row"><label>Destination *</label><select class="form-select" id="pushDestination" onchange="onDestinationChange()"><option value="">Select country...</option></select></div>
             <div class="form-row"><label>Hospital</label><select class="form-select" id="pushHospital" onchange="onHospitalChange()"><option value="">Select hospital...</option></select></div>
@@ -192,6 +194,7 @@ async function init() {
             if (!ext.error) {
                 if (ext.title) document.getElementById('pushTitle').value = ext.title;
                 if (ext.name) document.getElementById('pushName').value = ext.name;
+                if (ext.designation) document.getElementById('pushDesignation').value = ext.designation;
                 if (ext.destination_id) { document.getElementById('pushDestination').value = ext.destination_id; onDestinationChange(); }
                 if (ext.hospital_id) document.getElementById('pushHospital').value = ext.hospital_id;
                 if (ext.specialty_id) { document.getElementById('pushSpecialty').value = ext.specialty_id; await onSpecialtyChange(); if (ext.suggested_treatments) autoCheckTreatments(ext.suggested_treatments); }
@@ -301,6 +304,7 @@ async function executePush(){
         profile_id:profileId?parseInt(profileId):null,
         existing_doctor_id:pushMode==='update'?selectedDoctorId:null,
         name, title:document.getElementById('pushTitle').value,
+        designation:document.getElementById('pushDesignation').value.trim(),
         destination_id:parseInt(document.getElementById('pushDestination').value)||null,
         hospital_id:parseInt(document.getElementById('pushHospital').value)||null,
         specialty_id:parseInt(specEl.value)||null,
