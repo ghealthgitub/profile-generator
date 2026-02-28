@@ -132,18 +132,15 @@ def generate():
         manual_text = request.json.get('manual_text', '').strip()
 
         if not urls and not manual_text:
-            return jsonify({'error': 'Provide at least one URL or paste doctor information manually'}), 400
+            return jsonify({'error': 'Provide at least one URL, paste doctor info, or upload screenshots'}), 400
 
-        # Step 1: Scrape all URLs + include manual text
-        scraped = scrape_multiple_urls(urls, manual_text=manual_text)
+        # Step 1: Scrape URLs + manual text
+        scraped = scrape_multiple_urls(urls, manual_text=manual_text) if (urls or manual_text) else None
         if not scraped:
-            error_msg = 'Could not extract content from the given URL(s). '
-            if urls:
-                error_msg += 'The website may be JavaScript-rendered (React/Next.js) which blocks automated reading. '
-            error_msg += 'Please paste the doctor\'s information manually using the text box below the URL field.'
+            error_msg = 'Could not extract content. Try uploading screenshots or pasting info manually.'
             return jsonify({'error': error_msg}), 400
 
-        # Step 2: Load treatment dictionary from DB
+        # Step 2: Load treatment dictionary
         treatments = get_treatment_dictionary()
 
         # Step 3: Get active prompt template
@@ -153,7 +150,7 @@ def generate():
         # Step 4: Build final prompt
         final_prompt = build_prompt(prompt_template, scraped, treatments)
 
-        # Step 5: Call Claude if available
+        # Step 5: Call Claude
         if CLAUDE_AVAILABLE:
             try:
                 client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
@@ -163,47 +160,127 @@ def generate():
                     messages=[{"role": "user", "content": final_prompt}]
                 )
                 claude_response = message.content[0].text
-
-                # Extract doctor name from response or scraped titles
                 doctor_name = extract_doctor_name(scraped, claude_response)
-
-                # Save to history
-                profile_id = save_profile(
-                    doctor_name, urls, scraped,
-                    [], final_prompt, claude_response,
-                    session['user']['email']
-                )
+                profile_id = save_profile(doctor_name, urls, scraped, [], final_prompt, claude_response, session['user']['email'])
 
                 return jsonify({
-                    'success': True,
-                    'automated': True,
-                    'profile_id': profile_id,
-                    'doctor_name': doctor_name,
-                    'scraped_data': scraped,
-                    'claude_response': claude_response,
-                    'prompt_used': final_prompt,
+                    'success': True, 'automated': True, 'profile_id': profile_id,
+                    'doctor_name': doctor_name, 'scraped_data': scraped,
+                    'claude_response': claude_response, 'prompt_used': final_prompt,
                     'treatment_count': len(treatments)
                 })
-
             except Exception as e:
                 print(f"[Claude Error] {e}")
-                return jsonify({
-                    'success': True,
-                    'automated': False,
-                    'scraped_data': scraped,
-                    'prompt': final_prompt,
-                    'api_error': str(e)
-                })
+                return jsonify({'success': True, 'automated': False, 'scraped_data': scraped, 'prompt': final_prompt, 'api_error': str(e)})
         else:
-            return jsonify({
-                'success': True,
-                'automated': False,
-                'scraped_data': scraped,
-                'prompt': final_prompt
-            })
+            return jsonify({'success': True, 'automated': False, 'scraped_data': scraped, 'prompt': final_prompt})
 
     except Exception as e:
         print(f"[Generate Error] {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/generate-from-files', methods=['POST'])
+@login_required
+def generate_from_files():
+    """Generate profile from uploaded screenshots/files using Claude vision"""
+    try:
+        import base64
+        urls_raw = request.form.get('urls', '')
+        urls = [u.strip() for u in urls_raw.split('\n') if u.strip()]
+        manual_text = request.form.get('manual_text', '').strip()
+        uploaded_files = request.files.getlist('files')
+
+        # Process files
+        file_images = []
+        for f in uploaded_files:
+            if f and f.filename:
+                file_data = f.read()
+                if len(file_data) > 0:
+                    b64 = base64.b64encode(file_data).decode('utf-8')
+                    fname = f.filename.lower()
+                    if fname.endswith('.png'): media_type = 'image/png'
+                    elif fname.endswith(('.jpg','.jpeg')): media_type = 'image/jpeg'
+                    elif fname.endswith('.webp'): media_type = 'image/webp'
+                    elif fname.endswith('.gif'): media_type = 'image/gif'
+                    elif fname.endswith('.pdf'): media_type = 'application/pdf'
+                    else: media_type = 'image/png'
+                    file_images.append({
+                        'type': 'document' if fname.endswith('.pdf') else 'image',
+                        'media_type': media_type, 'data': b64, 'filename': f.filename
+                    })
+
+        has_files = len(file_images) > 0
+        if not urls and not manual_text and not has_files:
+            return jsonify({'error': 'Upload screenshots, provide URLs, or paste doctor information'}), 400
+
+        # Scrape URLs if any
+        scraped = None
+        if urls or manual_text:
+            scraped = scrape_multiple_urls(urls, manual_text=manual_text)
+
+        if not scraped and not has_files:
+            return jsonify({'error': 'No content extracted. Upload screenshots or paste info manually.'}), 400
+
+        # Build prompt
+        treatments = get_treatment_dictionary()
+        prompt_data = get_active_prompt()
+        prompt_template = prompt_data.get('prompt_text', '') if isinstance(prompt_data, dict) else prompt_data
+
+        if scraped:
+            final_prompt = build_prompt(prompt_template, scraped, treatments)
+        else:
+            final_prompt = build_prompt(prompt_template, {
+                'combined_text': '(See attached screenshots)', 'titles': [],
+                'urls': [], 'url_count': 0, 'errors': [],
+                'has_manual_text': False, 'total_chars': 0
+            }, treatments)
+
+        if has_files:
+            final_prompt += f"\n\nIMPORTANT: {len(file_images)} screenshot(s)/file(s) of the doctor's profile are attached. Extract ALL information from these images — name, qualifications, degrees, designations, specialties, experience, procedures, awards, hospital affiliations, memberships, and every other relevant detail. Use these images as the PRIMARY source."
+
+        if not CLAUDE_AVAILABLE:
+            return jsonify({'error': 'Claude API not available'}), 500
+
+        client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
+        content_parts = []
+        for img in file_images:
+            content_parts.append({
+                'type': img['type'],
+                'source': {'type': 'base64', 'media_type': img['media_type'], 'data': img['data']}
+            })
+        content_parts.append({'type': 'text', 'text': final_prompt})
+
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4000,
+            messages=[{"role": "user", "content": content_parts}]
+        )
+        claude_response = message.content[0].text
+        doctor_name = extract_doctor_name(scraped or {'titles': [], 'combined_text': ''}, claude_response)
+        file_names = [img['filename'] for img in file_images]
+
+        profile_id = save_profile(
+            doctor_name, urls + file_names, scraped or {},
+            [], final_prompt, claude_response, session['user']['email']
+        )
+
+        return jsonify({
+            'success': True, 'automated': True,
+            'profile_id': profile_id, 'doctor_name': doctor_name,
+            'scraped_data': scraped or {
+                'combined_text': f'({len(file_images)} file(s) uploaded)',
+                'errors': [], 'urls': file_names, 'url_count': 0
+            },
+            'claude_response': claude_response,
+            'prompt_used': final_prompt,
+            'treatment_count': len(treatments),
+            'files_used': len(file_images)
+        })
+
+    except Exception as e:
+        print(f"[Generate-Files Error] {e}")
+        import traceback; traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 

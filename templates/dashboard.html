@@ -291,6 +291,24 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
                 </div>
             </div>
 
+            <!-- Screenshot / File upload -->
+            <div style="margin-top:12px">
+                <div style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#6B7280;font-size:13px" onclick="toggleFileUpload()">
+                    <span id="fileToggleIcon">▶</span>
+                    <span>📸 <strong>Upload screenshots / files</strong> (best for sites that block scraping)</span>
+                </div>
+                <div id="fileUploadWrap" class="hidden" style="margin-top:10px">
+                    <div id="dropZone" style="border:2px dashed #D1D5DB;border-radius:10px;padding:28px 16px;text-align:center;cursor:pointer;transition:all .2s;background:#FAFAFA" onclick="document.getElementById('fileInput').click()" ondragover="event.preventDefault();this.style.borderColor='#0EA5A0';this.style.background='#F0FDFA'" ondragleave="this.style.borderColor='#D1D5DB';this.style.background='#FAFAFA'" ondrop="handleFileDrop(event)">
+                        <div style="font-size:28px;margin-bottom:6px">📁</div>
+                        <div style="font-weight:600;color:#374151;font-size:14px">Drop files here or click to browse</div>
+                        <div style="color:#9CA3AF;font-size:12px;margin-top:4px">PNG, JPG, WEBP, PDF — up to 10 files, 20MB each</div>
+                    </div>
+                    <input type="file" id="fileInput" multiple accept="image/*,.pdf" style="display:none" onchange="handleFileSelect(this.files)">
+                    <div id="fileList" style="margin-top:8px"></div>
+                    <div class="hint" style="font-size:11px;color:#9CA3AF;margin-top:4px">Take full-page screenshots of the doctor's profile and upload. Claude will read the images directly.</div>
+                </div>
+            </div>
+
             <div class="btn-row">
                 <button class="btn btn-orange" id="generateBtn" onclick="generateProfile()">⚡ Generate Profile</button>
             </div>
@@ -412,12 +430,66 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
             }
         }
 
+        // ── File Upload ──
+        let uploadedFiles = [];
+
+        function toggleFileUpload() {
+            const wrap = document.getElementById('fileUploadWrap');
+            const icon = document.getElementById('fileToggleIcon');
+            if (wrap.classList.contains('hidden')) {
+                wrap.classList.remove('hidden');
+                icon.textContent = '▼';
+            } else {
+                wrap.classList.add('hidden');
+                icon.textContent = '▶';
+            }
+        }
+
+        function handleFileDrop(e) {
+            e.preventDefault();
+            e.currentTarget.style.borderColor = '#D1D5DB';
+            e.currentTarget.style.background = '#FAFAFA';
+            if (e.dataTransfer.files.length) handleFileSelect(e.dataTransfer.files);
+        }
+
+        function handleFileSelect(fileList) {
+            for (const f of fileList) {
+                if (uploadedFiles.length >= 10) { showStatus('Max 10 files allowed', 'error'); break; }
+                if (f.size > 20 * 1024 * 1024) { showStatus(f.name + ' exceeds 20MB limit', 'error'); continue; }
+                const allowed = ['image/png','image/jpeg','image/jpg','image/webp','image/gif','application/pdf'];
+                if (!allowed.includes(f.type)) { showStatus(f.name + ' — unsupported type. Use PNG, JPG, WEBP, or PDF.', 'error'); continue; }
+                uploadedFiles.push(f);
+            }
+            renderFileList();
+        }
+
+        function renderFileList() {
+            const el = document.getElementById('fileList');
+            if (!uploadedFiles.length) { el.innerHTML = ''; return; }
+            el.innerHTML = uploadedFiles.map((f, i) => {
+                const isImg = f.type.startsWith('image/');
+                const thumb = isImg ? URL.createObjectURL(f) : '';
+                const sizeMB = (f.size / 1024 / 1024).toFixed(1);
+                return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:white;border:1px solid #E5E7EB;border-radius:8px;margin-bottom:6px">' +
+                    (isImg ? '<img src="'+thumb+'" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid #E5E7EB">' : '<span style="font-size:24px">📄</span>') +
+                    '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + f.name + '</div>' +
+                    '<div style="font-size:11px;color:#9CA3AF">' + sizeMB + ' MB · ' + f.type.split('/')[1].toUpperCase() + '</div></div>' +
+                    '<button onclick="removeFile('+i+')" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:16px;padding:4px" title="Remove">✕</button></div>';
+            }).join('');
+        }
+
+        function removeFile(idx) {
+            uploadedFiles.splice(idx, 1);
+            renderFileList();
+        }
+
         // ── Generate ──
         async function generateProfile() {
             const urls = getUrls();
             const manualText = (document.getElementById('manualText') || {}).value || '';
+            const hasFiles = uploadedFiles.length > 0;
 
-            if (!urls.length && !manualText.trim()) return showStatus('Enter at least one URL or paste doctor information manually', 'error');
+            if (!urls.length && !manualText.trim() && !hasFiles) return showStatus('Enter a URL, paste doctor info, or upload screenshots', 'error');
 
             const btn = document.getElementById('generateBtn');
             btn.disabled = true;
@@ -427,14 +499,25 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
             const sourceDesc = [];
             if (urls.length) sourceDesc.push(urls.length + ' URL(s)');
             if (manualText.trim()) sourceDesc.push('manual input');
-            showStatus('<div class="spinner"></div> Scraping ' + sourceDesc.join(' + ') + ' & generating profile...', 'loading');
+            if (hasFiles) sourceDesc.push(uploadedFiles.length + ' file(s)');
+            showStatus('<div class="spinner"></div> ' + (hasFiles ? 'Reading screenshots & ' : 'Scraping ' + (sourceDesc[0] || '') + ' & ') + 'generating profile...', 'loading');
 
             try {
-                const res = await fetch('/generate', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ urls, manual_text: manualText })
-                });
+                let res;
+                if (hasFiles) {
+                    // Use FormData for file uploads
+                    const fd = new FormData();
+                    fd.append('urls', urls.join('\n'));
+                    fd.append('manual_text', manualText);
+                    uploadedFiles.forEach(f => fd.append('files', f));
+                    res = await fetch('/generate-from-files', { method: 'POST', body: fd });
+                } else {
+                    res = await fetch('/generate', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ urls, manual_text: manualText })
+                    });
+                }
                 const data = await res.json();
 
                 if (data.error) {
@@ -461,7 +544,9 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
                         document.getElementById('profileIdBadge').classList.remove('hidden');
                     }
                     document.getElementById('editorCard').classList.remove('hidden');
-                    showStatus('✅ Profile generated — ' + data.treatment_count + ' treatments in dictionary, matched to doctor\'s specialty', 'success');
+                    let statusMsg = '✅ Profile generated — ' + data.treatment_count + ' treatments in dictionary';
+                    if (data.files_used) statusMsg += ', ' + data.files_used + ' screenshot(s) analyzed';
+                    showStatus(statusMsg, 'success');
                     document.getElementById('editorCard').scrollIntoView({behavior:'smooth',block:'start'});
                 } else {
                     currentPrompt = data.prompt;
