@@ -175,7 +175,7 @@ def get_specialties_list():
 
 
 def get_hospitals_list():
-    """Returns all published hospitals"""
+    """Returns all published hospitals with destination_id for filtering"""
     conn = get_conn()
     if not conn:
         return []
@@ -183,6 +183,7 @@ def get_hospitals_list():
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
                 SELECT h.id, h.name, h.slug, h.city, h.country,
+                       h.destination_id,
                        d.name AS destination_name
                 FROM hospitals h
                 LEFT JOIN destinations d ON d.id = h.destination_id

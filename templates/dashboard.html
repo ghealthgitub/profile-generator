@@ -366,16 +366,26 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
                 <button class="modal-close" onclick="closePushModal()">✕</button>
             </div>
 
+            <!-- Loading state (AI extracting) -->
+            <div id="pushLoading" class="hidden" style="padding:40px;text-align:center">
+                <div class="spinner" style="width:24px;height:24px;margin:0 auto 12px;border-width:3px"></div>
+                <div style="font-weight:600;color:#0B2545">AI is auto-filling fields...</div>
+                <div style="color:#9CA3AF;font-size:13px;margin-top:4px">Extracting doctor info from the generated profile</div>
+            </div>
+
             <!-- Success state -->
             <div id="pushSuccess" class="push-success hidden">
                 <div class="icon">✅</div>
-                <h3 id="pushSuccessTitle">Doctor published!</h3>
-                <p style="color:#6B7280;margin-bottom:12px" id="pushSuccessMsg"></p>
-                <a id="pushSuccessLink" href="#" target="_blank">View on website →</a>
+                <h3 id="pushSuccessTitle">Doctor created!</h3>
+                <p style="color:#6B7280;margin-bottom:16px" id="pushSuccessMsg"></p>
+                <div style="display:flex;gap:10px;justify-content:center">
+                    <a id="pushAdminLink" href="#" target="_blank" class="btn btn-teal" style="text-decoration:none;display:inline-block">Open in Doctor Studio →</a>
+                    <button class="btn btn-outline" onclick="closePushModal()">Close</button>
+                </div>
             </div>
 
             <!-- Form state -->
-            <div id="pushForm">
+            <div id="pushForm" class="hidden">
                 <div class="modal-body">
                     <!-- Mode tabs -->
                     <div class="mode-tabs">
@@ -390,6 +400,11 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
                             <input type="text" class="form-input" id="doctorSearch" placeholder="Type doctor name..." oninput="searchDoctors(this.value)">
                             <div id="doctorSearchResults" class="doctor-search-results hidden"></div>
                         </div>
+                    </div>
+
+                    <!-- AI confidence note -->
+                    <div id="aiNote" class="hidden" style="background:#F0FDFA;border:1px solid #99F6E4;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#0F766E">
+                        ✨ Fields auto-filled by AI. Please review and correct if needed.
                     </div>
 
                     <!-- Doctor Info -->
@@ -415,7 +430,7 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
                         </div>
                         <div class="form-row">
                             <label>Hospital</label>
-                            <select class="form-select" id="pushHospital">
+                            <select class="form-select" id="pushHospital" onchange="onHospitalChange()">
                                 <option value="">Select hospital...</option>
                             </select>
                         </div>
@@ -430,7 +445,9 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
                     <div class="form-grid">
                         <div class="form-row">
                             <label>City</label>
-                            <input type="text" class="form-input" id="pushCity" placeholder="e.g. Gurugram">
+                            <select class="form-select" id="pushCity">
+                                <option value="">Select city...</option>
+                            </select>
                         </div>
                         <div class="form-row">
                             <label>Experience (years)</label>
@@ -456,9 +473,10 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
                         <input type="text" class="form-input" id="pushDescription" placeholder="One-line summary (shown in listing cards)">
                     </div>
 
-                    <!-- Treatments checklist -->
+                    <!-- Treatments checklist with search -->
                     <div class="form-row">
-                        <label>Link Treatments (from selected specialty)</label>
+                        <label>Link Treatments <span id="txCount" style="color:#9CA3AF;font-weight:400"></span></label>
+                        <input type="text" class="form-input" id="txSearchInput" placeholder="Search treatments..." oninput="filterTreatmentChecklist()" style="margin-bottom:6px;padding:8px 12px;font-size:13px">
                         <div id="treatmentChecklist" class="treatment-checklist">
                             <div class="empty">Select a specialty first to see available treatments</div>
                         </div>
@@ -581,6 +599,7 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
                     currentProfileId = data.profile_id;
                     currentDoctorName = data.doctor_name;
                     currentPrompt = data.prompt_used;
+                    currentScrapedText = (data.scraped_data && data.scraped_data.combined_text) || '';
 
                     document.getElementById('profileEditor').value = data.claude_response;
                     document.getElementById('profileTitle').textContent = '✏️ ' + (data.doctor_name || 'Generated Profile');
@@ -736,21 +755,23 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
         // ══════════════════════════════════════════════
         // PUSH TO ADMIN
         // ══════════════════════════════════════════════
-        let pushData = null;     // { specialties, hospitals, destinations }
-        let pushMode = 'new';    // 'new' or 'update'
+        let pushData = null;
+        let pushMode = 'new';
         let selectedDoctorId = null;
+        let allTreatmentsForSpec = [];
+        let currentScrapedText = '';
+
+        const CITY_LIST = ['Delhi NCR','Mumbai','Bengaluru','Chennai','Hyderabad','Kolkata','Pune','Ahmedabad','Guwahati','Gurugram','Noida','Jaipur','Lucknow','Chandigarh','Kochi','Thiruvananthapuram','Coimbatore','Nagpur','Visakhapatnam','Bhubaneswar','Indore','Mangalore'];
 
         async function openPushModal() {
             const content = document.getElementById('profileEditor').value;
             if (!content) return showStatus('Generate a profile first', 'error');
 
-            // Show modal
+            // Show modal with loading state
             document.getElementById('pushModal').classList.remove('hidden');
             document.getElementById('pushSuccess').classList.add('hidden');
-            document.getElementById('pushForm').classList.remove('hidden');
-
-            // Pre-fill name
-            document.getElementById('pushName').value = currentDoctorName || '';
+            document.getElementById('pushForm').classList.add('hidden');
+            document.getElementById('pushLoading').classList.remove('hidden');
 
             // Load dropdown data if not cached
             if (!pushData) {
@@ -764,10 +785,67 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
                 }
             }
 
-            // Populate dropdowns
+            // Populate all dropdowns
             populateSelect('pushDestination', pushData.destinations, 'name', 'id', d => (d.flag || '') + ' ' + d.name);
             populateSelect('pushSpecialty', pushData.specialties, 'name', 'id', s => (s.icon || '') + ' ' + s.name);
             populateSelect('pushHospital', pushData.hospitals, 'name', 'id', h => h.name + (h.city ? ' — ' + h.city : ''));
+            populateCitySelect('');
+
+            // AI auto-extract fields
+            try {
+                const extRes = await fetch('/api/auto-extract', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        profile_text: content,
+                        scraped_text: currentScrapedText
+                    })
+                });
+                const ext = await extRes.json();
+
+                if (!ext.error) {
+                    // Fill fields from AI extraction
+                    if (ext.title) document.getElementById('pushTitle').value = ext.title;
+                    if (ext.name) document.getElementById('pushName').value = ext.name;
+                    if (ext.destination_id) {
+                        document.getElementById('pushDestination').value = ext.destination_id;
+                        onDestinationChange(); // cascade hospitals
+                    }
+                    if (ext.hospital_id) {
+                        document.getElementById('pushHospital').value = ext.hospital_id;
+                    }
+                    if (ext.specialty_id) {
+                        document.getElementById('pushSpecialty').value = ext.specialty_id;
+                        await onSpecialtyChange(); // cascade treatments
+                        // Auto-check treatments that match AI suggestions
+                        if (ext.suggested_treatments && ext.suggested_treatments.length) {
+                            autoCheckTreatments(ext.suggested_treatments);
+                        }
+                    }
+                    if (ext.city) {
+                        setCityValue(ext.city);
+                    } else if (ext.hospital_city) {
+                        setCityValue(ext.hospital_city);
+                    }
+                    if (ext.experience_years) document.getElementById('pushExperience').value = ext.experience_years;
+                    if (ext.qualifications && ext.qualifications.length) document.getElementById('pushQualifications').value = ext.qualifications.join(', ');
+                    if (ext.languages && ext.languages.length) document.getElementById('pushLanguages').value = ext.languages.join(', ');
+                    if (ext.description) document.getElementById('pushDescription').value = ext.description;
+                    document.getElementById('aiNote').classList.remove('hidden');
+                } else {
+                    // Fallback: just fill name
+                    document.getElementById('pushName').value = currentDoctorName || '';
+                    document.getElementById('aiNote').classList.add('hidden');
+                }
+            } catch(e) {
+                console.error('Auto-extract failed:', e);
+                document.getElementById('pushName').value = currentDoctorName || '';
+                document.getElementById('aiNote').classList.add('hidden');
+            }
+
+            // Show form
+            document.getElementById('pushLoading').classList.add('hidden');
+            document.getElementById('pushForm').classList.remove('hidden');
         }
 
         function closePushModal() {
@@ -786,7 +864,6 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
         function populateSelect(id, items, labelKey, valueKey, formatter) {
             const sel = document.getElementById(id);
             const current = sel.value;
-            // Keep first option
             sel.innerHTML = sel.options[0].outerHTML;
             items.forEach(item => {
                 const opt = document.createElement('option');
@@ -797,47 +874,129 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
             if (current) sel.value = current;
         }
 
+        function populateCitySelect(preselect) {
+            const sel = document.getElementById('pushCity');
+            sel.innerHTML = '<option value="">Select city...</option>' +
+                CITY_LIST.map(c => '<option value="' + c + '">' + c + '</option>').join('');
+            if (preselect) sel.value = preselect;
+        }
+
+        function setCityValue(city) {
+            const sel = document.getElementById('pushCity');
+            // Check if city exists in dropdown
+            const exists = Array.from(sel.options).some(o => o.value.toLowerCase() === city.toLowerCase());
+            if (exists) {
+                sel.value = Array.from(sel.options).find(o => o.value.toLowerCase() === city.toLowerCase()).value;
+            } else if (city) {
+                // Add it as a custom option
+                const opt = document.createElement('option');
+                opt.value = city;
+                opt.textContent = city;
+                sel.appendChild(opt);
+                sel.value = city;
+            }
+        }
+
+        // ── Cascading: Destination → Hospital + City ──
         function onDestinationChange() {
             const destId = document.getElementById('pushDestination').value;
             if (!destId || !pushData) return;
 
             // Filter hospitals by destination
-            const dest = pushData.destinations.find(d => d.id == destId);
-            if (dest) {
-                const filtered = pushData.hospitals.filter(h =>
-                    (h.destination_name || '').toLowerCase() === dest.name.toLowerCase() ||
-                    (h.country || '').toLowerCase() === dest.name.toLowerCase()
-                );
-                populateSelect('pushHospital', filtered.length ? filtered : pushData.hospitals,
-                    'name', 'id', h => h.name + (h.city ? ' — ' + h.city : ''));
+            const filtered = pushData.hospitals.filter(h =>
+                h.destination_id == destId
+            );
+            populateSelect('pushHospital',
+                filtered.length ? filtered : pushData.hospitals,
+                'name', 'id', h => h.name + (h.city ? ' — ' + h.city : '')
+            );
+        }
+
+        // ── Cascading: Hospital → City auto-fill ──
+        function onHospitalChange() {
+            const hospId = document.getElementById('pushHospital').value;
+            if (!hospId || !pushData) return;
+
+            const hosp = pushData.hospitals.find(h => h.id == hospId);
+            if (hosp) {
+                // Auto-fill city from hospital
+                if (hosp.city && !document.getElementById('pushCity').value) {
+                    setCityValue(hosp.city);
+                }
+                // Auto-fill destination from hospital
+                if (hosp.destination_id && !document.getElementById('pushDestination').value) {
+                    document.getElementById('pushDestination').value = hosp.destination_id;
+                }
             }
         }
 
+        // ── Cascading: Specialty → Treatments ──
         async function onSpecialtyChange() {
             const specId = document.getElementById('pushSpecialty').value;
             const container = document.getElementById('treatmentChecklist');
             if (!specId) {
                 container.innerHTML = '<div class="empty">Select a specialty first</div>';
+                allTreatmentsForSpec = [];
+                updateTxCount();
                 return;
             }
 
             container.innerHTML = '<div class="empty">Loading treatments...</div>';
             try {
                 const res = await fetch('/api/push-treatments/' + specId);
-                const treatments = await res.json();
-                if (!treatments.length) {
-                    container.innerHTML = '<div class="empty">No treatments found for this specialty</div>';
-                    return;
-                }
-                container.innerHTML = treatments.map(t =>
-                    '<label><input type="checkbox" value="' + t.id + '" checked> ' + t.name + '</label>'
-                ).join('');
+                allTreatmentsForSpec = await res.json();
+                renderTreatmentChecklist();
             } catch(e) {
                 container.innerHTML = '<div class="empty">Error loading treatments</div>';
+                allTreatmentsForSpec = [];
             }
+            updateTxCount();
         }
 
-        // Doctor search (update mode)
+        function renderTreatmentChecklist() {
+            const container = document.getElementById('treatmentChecklist');
+            const search = (document.getElementById('txSearchInput').value || '').toLowerCase();
+            let filtered = allTreatmentsForSpec;
+            if (search) filtered = filtered.filter(t => t.name.toLowerCase().includes(search));
+
+            if (!filtered.length) {
+                container.innerHTML = '<div class="empty">' + (search ? 'No matching treatments' : 'No treatments for this specialty') + '</div>';
+                return;
+            }
+            container.innerHTML = filtered.map(t =>
+                '<label><input type="checkbox" value="' + t.id + '" onchange="updateTxCount()"' +
+                (t._checked ? ' checked' : '') + '> ' + t.name + '</label>'
+            ).join('');
+        }
+
+        function filterTreatmentChecklist() {
+            // Preserve checked state
+            document.querySelectorAll('#treatmentChecklist input[type=checkbox]').forEach(cb => {
+                const t = allTreatmentsForSpec.find(x => x.id == cb.value);
+                if (t) t._checked = cb.checked;
+            });
+            renderTreatmentChecklist();
+        }
+
+        function autoCheckTreatments(suggestedNames) {
+            if (!suggestedNames || !suggestedNames.length) return;
+            const lowerNames = suggestedNames.map(n => n.toLowerCase());
+            allTreatmentsForSpec.forEach(t => {
+                t._checked = lowerNames.some(sn =>
+                    t.name.toLowerCase().includes(sn) || sn.includes(t.name.toLowerCase())
+                );
+            });
+            renderTreatmentChecklist();
+            updateTxCount();
+        }
+
+        function updateTxCount() {
+            const checked = document.querySelectorAll('#treatmentChecklist input[type=checkbox]:checked').length;
+            const total = allTreatmentsForSpec.length;
+            document.getElementById('txCount').textContent = total ? '(' + checked + '/' + total + ' selected)' : '';
+        }
+
+        // ── Doctor search (update mode) ──
         let searchTimer = null;
         function searchDoctors(query) {
             clearTimeout(searchTimer);
@@ -869,14 +1028,11 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
         function selectExistingDoctor(id, name) {
             selectedDoctorId = id;
             document.getElementById('pushName').value = name;
-            document.getElementById('doctorSearchResults').querySelectorAll('.doctor-search-item').forEach(el => {
-                el.classList.remove('selected');
-            });
-            // Visual feedback
             document.getElementById('doctorSearch').value = name;
             document.getElementById('doctorSearchResults').classList.add('hidden');
         }
 
+        // ── Execute Push ──
         async function executePush() {
             const btn = document.getElementById('pushBtn');
             btn.disabled = true;
@@ -885,12 +1041,10 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
             const name = document.getElementById('pushName').value.trim();
             if (!name) { btn.disabled = false; btn.textContent = '🚀 Push to Admin'; alert('Doctor name is required'); return; }
 
-            // Gather checked treatment IDs
             const treatmentIds = Array.from(
                 document.querySelectorAll('#treatmentChecklist input[type=checkbox]:checked')
             ).map(cb => parseInt(cb.value));
 
-            // Build the long_description from the editor content
             const profileContent = document.getElementById('profileEditor').value;
 
             const payload = {
@@ -901,7 +1055,7 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
                 destination_id: parseInt(document.getElementById('pushDestination').value) || null,
                 hospital_id: parseInt(document.getElementById('pushHospital').value) || null,
                 specialty_id: parseInt(document.getElementById('pushSpecialty').value) || null,
-                city: document.getElementById('pushCity').value.trim(),
+                city: document.getElementById('pushCity').value,
                 country: document.getElementById('pushDestination').selectedOptions[0]?.textContent.trim() || '',
                 experience_years: parseInt(document.getElementById('pushExperience').value) || null,
                 qualifications: document.getElementById('pushQualifications').value.split(',').map(s => s.trim()).filter(Boolean),
@@ -923,7 +1077,6 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
                 const result = await res.json();
 
                 if (result.success) {
-                    // Show success state
                     document.getElementById('pushForm').classList.add('hidden');
                     document.getElementById('pushSuccess').classList.remove('hidden');
                     document.getElementById('pushSuccessTitle').textContent =
@@ -931,12 +1084,11 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
                     document.getElementById('pushSuccessMsg').textContent =
                         'ID: #' + result.doctor_id + ' · Slug: ' + result.slug +
                         ' · Status: ' + payload.status;
-                    if (result.public_url) {
-                        const link = document.getElementById('pushSuccessLink');
-                        link.href = 'https://ginger.healthcare' + result.public_url;
-                        link.textContent = 'View on website →';
-                        link.classList.remove('hidden');
-                    }
+
+                    // Link to Doctor Studio in admin (NOT the public website)
+                    const adminLink = document.getElementById('pushAdminLink');
+                    adminLink.href = '{{ admin_url }}/doctors/edit/' + result.doctor_id;
+
                     showStatus('🚀 Doctor ' + (result.is_update ? 'updated' : 'pushed') + ' to admin! ID: #' + result.doctor_id, 'success');
                 } else {
                     alert('Push failed: ' + (result.error || 'Unknown error'));

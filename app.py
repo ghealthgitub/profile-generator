@@ -103,7 +103,8 @@ def dashboard():
         stats=stats,
         recent_profiles=recent,
         specialty_count=len(specialties),
-        treatment_count=len(get_treatment_dictionary())
+        treatment_count=len(get_treatment_dictionary()),
+        admin_url=config.ADMIN_URL
     )
 
 
@@ -342,6 +343,103 @@ def push_treatments(specialty_id):
     """Returns treatments for a given specialty (for the treatments checklist)"""
     treatments = get_treatments_for_specialty(specialty_id)
     return jsonify(treatments)
+
+
+@app.route('/api/auto-extract', methods=['POST'])
+@login_required
+def auto_extract():
+    """
+    Uses Claude to extract structured fields from the generated profile.
+    Returns JSON with: name, specialty, hospital, city, experience_years,
+    qualifications, languages, description, suggested_treatments
+    """
+    if not CLAUDE_AVAILABLE:
+        return jsonify({'error': 'Claude API not available'}), 400
+
+    profile_text = request.json.get('profile_text', '')
+    scraped_text = request.json.get('scraped_text', '')
+
+    if not profile_text:
+        return jsonify({'error': 'No profile text'}), 400
+
+    # Get available data for context
+    specialties = get_specialties_list()
+    hospitals = get_hospitals_list()
+    destinations = get_destinations_list()
+
+    spec_names = [s['name'] for s in specialties]
+    hosp_names = [h['name'] for h in hospitals]
+    dest_names = [d['name'] for d in destinations]
+
+    extract_prompt = f"""Extract structured data from this doctor profile. Return ONLY valid JSON, no other text.
+
+AVAILABLE SPECIALTIES (pick the best match):
+{', '.join(spec_names)}
+
+AVAILABLE HOSPITALS (pick the best match):
+{', '.join(hosp_names)}
+
+AVAILABLE DESTINATIONS (countries):
+{', '.join(dest_names)}
+
+DOCTOR PROFILE:
+{profile_text[:3000]}
+
+{('ADDITIONAL SCRAPED DATA:' + scraped_text[:2000]) if scraped_text else ''}
+
+Return JSON with these exact keys:
+{{
+  "name": "Doctor full name without Dr. prefix",
+  "title": "Dr." or "Prof." etc,
+  "specialty": "Best matching specialty from the list above (exact name)",
+  "hospital": "Best matching hospital from the list above (exact name)",
+  "destination": "Best matching destination from the list above (exact name)",
+  "city": "City name",
+  "experience_years": number or null,
+  "qualifications": ["MBBS", "MS", "MCh", etc],
+  "languages": ["English", "Hindi", etc],
+  "description": "One-line summary under 150 chars for listing cards",
+  "suggested_treatments": ["treatment names mentioned in the profile"]
+}}
+
+IMPORTANT: For specialty, hospital, and destination — ONLY use names from the lists provided above. If no exact match, pick the closest one. Return ONLY the JSON object."""
+
+    try:
+        client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1000,
+            messages=[{"role": "user", "content": extract_prompt}]
+        )
+        raw = message.content[0].text.strip()
+
+        # Clean JSON from markdown fences if present
+        if raw.startswith('```'):
+            raw = raw.split('\n', 1)[1] if '\n' in raw else raw[3:]
+        if raw.endswith('```'):
+            raw = raw[:-3]
+        raw = raw.strip()
+        if raw.startswith('json'):
+            raw = raw[4:].strip()
+
+        import json as json_mod
+        extracted = json_mod.loads(raw)
+
+        # Match to IDs
+        spec_match = next((s for s in specialties if s['name'] == extracted.get('specialty')), None)
+        hosp_match = next((h for h in hospitals if h['name'] == extracted.get('hospital')), None)
+        dest_match = next((d for d in destinations if d['name'] == extracted.get('destination')), None)
+
+        extracted['specialty_id'] = spec_match['id'] if spec_match else None
+        extracted['hospital_id'] = hosp_match['id'] if hosp_match else None
+        extracted['destination_id'] = dest_match['id'] if dest_match else None
+        extracted['hospital_city'] = hosp_match.get('city', '') if hosp_match else ''
+
+        return jsonify(extracted)
+
+    except Exception as e:
+        print(f"[Extract Error] {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/push-doctor', methods=['POST'])
