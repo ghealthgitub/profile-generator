@@ -72,36 +72,72 @@ def scrape_single_url(url, agent_index=0):
     Scrapes a single URL using multiple extraction strategies.
     Returns dict with 'text', 'title', 'method' or None on failure.
     """
-    try:
-        headers = {
+    # ── Pre-check: Site-specific API extraction ──────────
+    site_result = try_site_specific_api(url)
+    if site_result and site_result.get('text') and len(site_result['text']) > 100:
+        return site_result
+
+    # ── Standard HTML scraping with retry ────────────────
+    html = None
+    last_error = ''
+
+    # Try multiple header combinations
+    header_sets = [
+        {
             'User-Agent': USER_AGENTS[agent_index % len(USER_AGENTS)],
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate',
+            'Accept-Encoding': 'gzip, deflate, br',
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1',
-        }
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'Cache-Control': 'max-age=0',
+        },
+        {
+            'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+            'Accept': 'text/html',
+        },
+        {
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,*/*',
+            'Accept-Language': 'en-US,en;q=0.5',
+        },
+    ]
 
-        response = requests.get(url, headers=headers, timeout=20, allow_redirects=True)
+    for i, headers in enumerate(header_sets):
+        try:
+            response = requests.get(url, headers=headers, timeout=20, allow_redirects=True)
+            if response.status_code == 200 and len(response.text) > 500:
+                if response.encoding and response.encoding.lower() != 'utf-8':
+                    response.encoding = response.apparent_encoding or 'utf-8'
+                html = response.text
+                break
+            else:
+                last_error = f'HTTP {response.status_code} (attempt {i+1})'
+        except requests.exceptions.Timeout:
+            last_error = f'Timeout (attempt {i+1})'
+        except requests.exceptions.ConnectionError as e:
+            last_error = f'Connection failed: {str(e)[:80]}'
+            break  # DNS/network issue, no point retrying
+        except Exception as e:
+            last_error = str(e)[:100]
 
-        if response.status_code != 200:
-            return {'text': '', 'title': '', 'error': f'HTTP {response.status_code}'}
+    if not html:
+        return {'text': '', 'title': '', 'error': last_error or 'Could not fetch page'}
 
-        # Force UTF-8 if needed
-        if response.encoding and response.encoding.lower() != 'utf-8':
-            response.encoding = response.apparent_encoding or 'utf-8'
+    soup = BeautifulSoup(html, 'html.parser')
 
-        html = response.text
-        soup = BeautifulSoup(html, 'html.parser')
-
-        # Get page title
-        title = ''
-        h1 = soup.find('h1')
-        title_tag = soup.find('title')
-        if h1:
-            title = h1.get_text(strip=True)
-        elif title_tag:
-            title = title_tag.get_text(strip=True)
+    # Get page title
+    title = ''
+    h1 = soup.find('h1')
+    title_tag = soup.find('title')
+    if h1:
+        title = h1.get_text(strip=True)
+    elif title_tag:
+        title = title_tag.get_text(strip=True)
 
         # ── Strategy 1: JSON-LD structured data ──────────────
         jsonld_text = extract_jsonld(soup)
@@ -175,13 +211,176 @@ def scrape_single_url(url, agent_index=0):
             'error': 'JavaScript-rendered page — use manual input'
         }
 
-    except requests.exceptions.Timeout:
-        return {'text': '', 'title': '', 'error': 'Request timed out (20s)'}
-    except requests.exceptions.ConnectionError as e:
-        return {'text': '', 'title': '', 'error': f'Connection failed: {str(e)[:100]}'}
+
+# ═══════════════════════════════════════════════════════════════
+# SITE-SPECIFIC API STRATEGIES
+# ═══════════════════════════════════════════════════════════════
+
+def try_site_specific_api(url):
+    """
+    For known hospital sites that block scraping, try their internal APIs
+    or alternative endpoints that return usable data.
+    """
+    url_lower = url.lower()
+
+    # ── Max Healthcare ──────────────────────────────────────
+    if 'maxhealthcare.in/doctor/' in url_lower:
+        return scrape_max_healthcare(url)
+
+    return None
+
+
+def scrape_max_healthcare(url):
+    """
+    Max Healthcare uses Next.js with Cloudflare. Their doctor pages
+    are fully client-rendered. We try multiple approaches:
+    1. Their internal API endpoint
+    2. Google's cached version
+    3. Mobile user agent (sometimes bypasses WAF)
+    """
+    import re
+
+    # Extract doctor slug from URL
+    match = re.search(r'/doctor/([^/?#]+)', url)
+    if not match:
+        return None
+    slug = match.group(1)
+
+    # Approach 1: Try the Next.js data endpoint
+    # Next.js sites expose page data at /_next/data/{buildId}/...
+    # But buildId changes. Try the JSON route instead.
+    api_urls = [
+        f'https://www.maxhealthcare.in/_next/data/doctor/{slug}.json',
+        f'https://www.maxhealthcare.in/api/doctor/{slug}',
+        f'https://www.maxhealthcare.in/doctor/{slug}',
+    ]
+
+    headers_options = [
+        {
+            'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+            'Accept': 'text/html,application/xhtml+xml',
+        },
+        {
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+        },
+        {
+            'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+            'Accept': 'text/html',
+        },
+        {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9,hi;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'cross-site',
+            'Sec-Fetch-User': '?1',
+            'Referer': 'https://www.google.com/',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+        },
+    ]
+
+    for headers in headers_options:
+        try:
+            response = requests.get(url, headers=headers, timeout=25, allow_redirects=True)
+            if response.status_code == 200 and len(response.text) > 1000:
+                if response.encoding and response.encoding.lower() != 'utf-8':
+                    response.encoding = response.apparent_encoding or 'utf-8'
+
+                html = response.text
+                soup = BeautifulSoup(html, 'html.parser')
+
+                # Try __NEXT_DATA__ first
+                nextdata = extract_nextdata(soup)
+                if nextdata and len(nextdata) > 100:
+                    title = ''
+                    h1 = soup.find('h1')
+                    if h1:
+                        title = h1.get_text(strip=True)
+                    return {
+                        'text': f"[Page: {title or slug}]\n\n--- Max Healthcare Profile ---\n{nextdata}",
+                        'title': title or slug,
+                        'method': 'max-nextjs'
+                    }
+
+                # Try JSON-LD
+                jsonld = extract_jsonld(soup)
+                if jsonld and len(jsonld) > 100:
+                    title = ''
+                    h1 = soup.find('h1')
+                    if h1:
+                        title = h1.get_text(strip=True)
+                    semantic = extract_semantic_content(soup)
+                    text = f"[Page: {title or slug}]\n\n--- Structured Data ---\n{jsonld}"
+                    if semantic and len(semantic) > 100:
+                        text += f"\n\n--- Page Content ---\n{semantic}"
+                    return {
+                        'text': text[:8000],
+                        'title': title or slug,
+                        'method': 'max-jsonld'
+                    }
+
+                # Try semantic/body extraction
+                semantic = extract_semantic_content(soup)
+                if semantic and len(semantic) > 200:
+                    title = ''
+                    h1 = soup.find('h1')
+                    if h1:
+                        title = h1.get_text(strip=True)
+                    meta = extract_meta_tags(soup)
+                    text = f"[Page: {title or slug}]\n"
+                    if meta:
+                        text += f"\n{meta}\n"
+                    text += f"\n{semantic}"
+                    return {
+                        'text': text[:8000],
+                        'title': title or slug,
+                        'method': 'max-semantic'
+                    }
+
+                # Even body text
+                body = extract_body_text(soup)
+                if body and len(body) > 200:
+                    return {
+                        'text': f"[Page: {slug}]\n\n{body}"[:8000],
+                        'title': slug,
+                        'method': 'max-body'
+                    }
+
+        except Exception as e:
+            print(f"[Max Scrape] {headers.get('User-Agent','')[:30]}... : {e}")
+            continue
+
+    # Approach 2: Try Google cache
+    try:
+        cache_url = f'https://webcache.googleusercontent.com/search?q=cache:{url}'
+        cache_headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Accept': 'text/html',
+        }
+        response = requests.get(cache_url, headers=cache_headers, timeout=15, allow_redirects=True)
+        if response.status_code == 200 and len(response.text) > 1000:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            semantic = extract_semantic_content(soup)
+            body = extract_body_text(soup) if not semantic else ''
+            content = semantic or body
+            if content and len(content) > 200:
+                return {
+                    'text': f"[Page: {slug} (Google Cache)]\n\n{content}"[:8000],
+                    'title': slug,
+                    'method': 'google-cache'
+                }
     except Exception as e:
-        print(f"[Scrape Error] {url}: {e}")
-        return {'text': '', 'title': '', 'error': str(e)[:200]}
+        print(f"[Google Cache] {e}")
+
+    return None
 
 
 # ═══════════════════════════════════════════════════════════════
