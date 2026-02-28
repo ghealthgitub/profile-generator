@@ -6,566 +6,496 @@
     <title>Dashboard — Ginger Universe</title>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'DM Sans',sans-serif;background:#F0F2F5;color:#1F2937;min-height:100vh}
 
-        body {
-            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #F3F4F6;
-            color: #1F2937;
-            min-height: 100vh;
+        /* ── Topbar ── */
+        .topbar{
+            background:linear-gradient(135deg,#0B2545,#13315C);color:white;
+            padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;
+            box-shadow:0 2px 12px rgba(11,37,69,.25);position:sticky;top:0;z-index:100;
         }
+        .topbar-left{display:flex;align-items:center;gap:12px}
+        .topbar-logo{width:34px;height:34px;background:#F26522;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px}
+        .topbar-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:700}
+        .topbar-right{display:flex;align-items:center;gap:14px;font-size:13px}
+        .badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+        .badge-green{background:rgba(16,185,129,.2);color:#6EE7B7}
+        .badge-amber{background:rgba(251,191,36,.2);color:#FCD34D}
+        .badge-blue{background:rgba(59,130,246,.2);color:#93C5FD}
+        .topbar-nav{display:flex;gap:4px}
+        .topbar-nav a{
+            color:rgba(255,255,255,.7);text-decoration:none;padding:6px 14px;
+            border-radius:6px;font-size:13px;font-weight:500;transition:all .2s;
+        }
+        .topbar-nav a:hover,.topbar-nav a.active{background:rgba(255,255,255,.1);color:white}
+        .btn-sm{padding:5px 14px;border-radius:6px;font-size:12px;font-weight:600;border:none;cursor:pointer;font-family:inherit;text-decoration:none}
+        .btn-ghost{background:rgba(255,255,255,.1);color:white}
+        .btn-ghost:hover{background:rgba(255,255,255,.2)}
 
-        /* ── Header ─────────────────────────────────── */
-        .header {
-            background: linear-gradient(135deg, #0B2545 0%, #13315C 100%);
-            color: white;
-            padding: 16px 32px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 12px rgba(11,37,69,0.3);
-        }
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-family: 'Playfair Display', serif;
-            font-size: 22px;
-            font-weight: 700;
-        }
-        .logo-icon {
-            width: 40px; height: 40px;
-            background: #F26522;
-            border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 22px;
-        }
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            font-size: 14px;
-        }
-        .mode-badge {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .mode-badge.auto { background: rgba(16,185,129,0.2); color: #6EE7B7; }
-        .mode-badge.manual { background: rgba(251,191,36,0.2); color: #FCD34D; }
-        .logout-btn {
-            padding: 6px 16px;
-            border-radius: 6px;
-            text-decoration: none;
-            color: white;
-            background: rgba(255,255,255,0.1);
-            font-size: 13px;
-            transition: background 0.2s;
-        }
-        .logout-btn:hover { background: rgba(255,255,255,0.2); }
+        /* ── Layout ── */
+        .main{max-width:1100px;margin:24px auto;padding:0 20px}
 
-        /* ── Main Container ─────────────────────────── */
-        .container {
-            max-width: 960px;
-            margin: 32px auto;
-            padding: 0 20px;
+        /* ── Stat Cards ── */
+        .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+        .stat-card{
+            background:white;border-radius:12px;padding:20px;
+            border:1px solid #E5E7EB;position:relative;overflow:hidden;
         }
+        .stat-card::after{
+            content:'';position:absolute;top:0;right:0;width:60px;height:60px;
+            border-radius:0 0 0 60px;opacity:.08;
+        }
+        .stat-card:nth-child(1)::after{background:#0EA5A0}
+        .stat-card:nth-child(2)::after{background:#F26522}
+        .stat-card:nth-child(3)::after{background:#3B82F6}
+        .stat-card:nth-child(4)::after{background:#8B5CF6}
+        .stat-label{font-size:12px;color:#6B7280;font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+        .stat-value{font-size:28px;font-weight:700;color:#0B2545;margin:4px 0}
+        .stat-sub{font-size:12px;color:#9CA3AF}
 
-        /* ── Cards ──────────────────────────────────── */
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 28px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-            margin-bottom: 24px;
-            border: 1px solid #E5E7EB;
-        }
-        .card h2 {
-            font-family: 'Playfair Display', serif;
-            font-size: 20px;
-            color: #0B2545;
-            margin-bottom: 16px;
-        }
+        /* ── Cards ── */
+        .card{background:white;border-radius:12px;padding:24px;border:1px solid #E5E7EB;margin-bottom:20px}
+        .card h2{font-family:'Playfair Display',serif;font-size:18px;color:#0B2545;margin-bottom:16px}
+        .card h3{font-size:15px;font-weight:600;color:#0B2545;margin-bottom:12px}
 
-        /* ── Input ──────────────────────────────────── */
-        .url-row {
-            display: flex;
-            gap: 12px;
+        /* ── URL Input Area ── */
+        .url-area{margin-bottom:12px}
+        .url-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+        .url-input{
+            flex:1;padding:10px 14px;border:2px solid #E5E7EB;border-radius:8px;
+            font-size:14px;font-family:inherit;transition:border-color .2s;
         }
-        .url-input {
-            flex: 1;
-            padding: 12px 16px;
-            border: 2px solid #E5E7EB;
-            border-radius: 8px;
-            font-size: 15px;
-            font-family: inherit;
-            transition: border-color 0.2s;
+        .url-input:focus{outline:none;border-color:#0EA5A0;box-shadow:0 0 0 3px rgba(14,165,160,.08)}
+        .url-remove{
+            width:32px;height:32px;border:none;background:#FEE2E2;color:#DC2626;
+            border-radius:6px;cursor:pointer;font-size:16px;flex-shrink:0;
         }
-        .url-input:focus {
-            outline: none;
-            border-color: #0EA5A0;
-            box-shadow: 0 0 0 3px rgba(14,165,160,0.1);
+        .url-remove:hover{background:#FECACA}
+        .add-url-btn{
+            padding:8px 16px;background:#F0FDF4;color:#166534;border:1px dashed #86EFAC;
+            border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;
         }
-        .btn-generate {
-            padding: 12px 28px;
-            background: #F26522;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: all 0.2s;
-        }
-        .btn-generate:hover { background: #D9541A; transform: translateY(-1px); }
-        .btn-generate:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
+        .add-url-btn:hover{background:#DCFCE7}
 
-        /* ── Status Bar ─────────────────────────────── */
-        .status-bar {
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-top: 16px;
-            font-size: 14px;
-            font-weight: 500;
-            display: none;
+        .btn-row{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+        .btn{
+            padding:10px 22px;border:none;border-radius:8px;font-size:14px;
+            font-weight:600;font-family:inherit;cursor:pointer;transition:all .2s;
         }
-        .status-bar.loading {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: #FEF3C7;
-            color: #92400E;
-            border: 1px solid #FDE68A;
+        .btn-orange{background:#F26522;color:white}
+        .btn-orange:hover{background:#D9541A;transform:translateY(-1px)}
+        .btn-teal{background:#0EA5A0;color:white}
+        .btn-teal:hover{background:#0C8C88}
+        .btn-navy{background:#0B2545;color:white}
+        .btn-navy:hover{background:#13315C}
+        .btn-outline{background:white;color:#374151;border:2px solid #D1D5DB}
+        .btn-outline:hover{border-color:#9CA3AF}
+        .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+        /* ── Status ── */
+        .status-bar{padding:12px 16px;border-radius:8px;margin:12px 0;font-size:14px;font-weight:500;display:none}
+        .status-bar.loading{display:flex;align-items:center;gap:10px;background:#FEF3C7;color:#92400E;border:1px solid #FDE68A}
+        .status-bar.success{display:block;background:#D1FAE5;color:#065F46;border:1px solid #A7F3D0}
+        .status-bar.error{display:block;background:#FEE2E2;color:#991B1B;border:1px solid #FECACA}
+        .spinner{width:16px;height:16px;border:2.5px solid #FDE68A;border-top-color:#92400E;border-radius:50%;animation:spin .6s linear infinite}
+        @keyframes spin{to{transform:rotate(360deg)}}
+
+        /* ── Profile Editor ── */
+        .editor-area{
+            width:100%;min-height:400px;padding:20px;border:2px solid #E5E7EB;border-radius:8px;
+            font-size:14px;font-family:inherit;line-height:1.8;resize:vertical;
+            transition:border-color .2s;
         }
-        .status-bar.success {
-            display: block;
-            background: #D1FAE5;
-            color: #065F46;
-            border: 1px solid #A7F3D0;
+        .editor-area:focus{outline:none;border-color:#0EA5A0}
+        .editor-toolbar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+
+        /* ── Scraped Data ── */
+        .scrape-summary{
+            background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;
+            padding:16px;font-size:13px;margin-bottom:16px;
         }
-        .status-bar.error {
-            display: block;
-            background: #FEE2E2;
-            color: #991B1B;
-            border: 1px solid #FECACA;
+        .scrape-summary .label{font-weight:600;color:#6B7280;margin-right:8px}
+        .tag{
+            display:inline-block;padding:2px 10px;border-radius:12px;
+            font-size:11px;font-weight:600;margin:2px 3px;
+        }
+        .tag-blue{background:#EFF6FF;color:#1E40AF}
+        .tag-green{background:#F0FDF4;color:#166534}
+        .tag-orange{background:#FFF7ED;color:#9A3412}
+
+        /* ── History Table ── */
+        .history-table{width:100%;border-collapse:collapse;font-size:13px}
+        .history-table th{text-align:left;padding:10px 12px;background:#F9FAFB;border-bottom:2px solid #E5E7EB;font-weight:600;color:#6B7280;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+        .history-table td{padding:10px 12px;border-bottom:1px solid #F3F4F6}
+        .history-table tr:hover{background:#F9FAFB}
+        .status-badge{padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600}
+        .status-generated{background:#DBEAFE;color:#1E40AF}
+        .status-edited{background:#D1FAE5;color:#065F46}
+
+        /* ── Prompt Box ── */
+        .prompt-box{
+            background:#1F2937;color:#D1D5DB;border-radius:8px;padding:16px;
+            font-family:'Courier New',monospace;font-size:12px;max-height:300px;
+            overflow-y:auto;white-space:pre-wrap;margin:12px 0;
         }
 
-        /* Spinner */
-        .spinner {
-            width: 18px; height: 18px;
-            border: 2.5px solid #FDE68A;
-            border-top-color: #92400E;
-            border-radius: 50%;
-            animation: spin 0.7s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .hidden{display:none!important}
 
-        /* ── Extracted Data Card ────────────────────── */
-        .data-grid {
-            display: grid;
-            grid-template-columns: 140px 1fr;
-            gap: 8px 16px;
-            font-size: 14px;
-        }
-        .data-label {
-            font-weight: 600;
-            color: #6B7280;
-        }
-        .data-value {
-            color: #1F2937;
-        }
-        .tag {
-            display: inline-block;
-            padding: 2px 10px;
-            background: #EFF6FF;
-            color: #1E40AF;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 500;
-            margin: 2px 4px 2px 0;
-        }
-        .tag.green { background: #ECFDF5; color: #065F46; }
-        .tag.orange { background: #FFF7ED; color: #9A3412; }
-
-        /* ── Profile Result ─────────────────────────── */
-        .profile-content {
-            background: #FAFAFA;
-            border: 1px solid #E5E7EB;
-            border-radius: 8px;
-            padding: 24px;
-            font-size: 14px;
-            line-height: 1.7;
-            max-height: 500px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            margin-bottom: 16px;
-        }
-        .profile-content::-webkit-scrollbar { width: 6px; }
-        .profile-content::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
-
-        .action-row {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .btn-teal { background: #0EA5A0; color: white; }
-        .btn-teal:hover { background: #0C8C88; }
-        .btn-navy { background: #0B2545; color: white; }
-        .btn-navy:hover { background: #13315C; }
-        .btn-outline {
-            background: white;
-            color: #374151;
-            border: 2px solid #D1D5DB;
-        }
-        .btn-outline:hover { border-color: #9CA3AF; }
-
-        /* ── Manual Mode ────────────────────────────── */
-        .prompt-box {
-            background: #1F2937;
-            color: #E5E7EB;
-            border-radius: 8px;
-            padding: 20px;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            max-height: 350px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            margin-bottom: 12px;
-        }
-        .response-textarea {
-            width: 100%;
-            min-height: 180px;
-            padding: 16px;
-            border: 2px solid #E5E7EB;
-            border-radius: 8px;
-            font-size: 14px;
-            font-family: inherit;
-            resize: vertical;
-            transition: border-color 0.2s;
-        }
-        .response-textarea:focus {
-            outline: none;
-            border-color: #0EA5A0;
-        }
-
-        /* ── Matched Procedures ─────────────────────── */
-        .procedures-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-top: 8px;
-        }
-        .proc-tag {
-            padding: 4px 10px;
-            background: #F0FDF4;
-            border: 1px solid #BBF7D0;
-            color: #166534;
-            border-radius: 6px;
-            font-size: 12px;
-        }
-        .proc-score {
-            font-weight: 700;
-            color: #15803D;
-            margin-left: 4px;
-        }
-
-        /* ── Hidden ─────────────────────────────────── */
-        .hidden { display: none !important; }
-
-        /* ── Responsive ─────────────────────────────── */
-        @media (max-width: 640px) {
-            .header { padding: 14px 16px; }
-            .container { padding: 0 12px; }
-            .url-row { flex-direction: column; }
-            .action-row { flex-direction: column; }
+        @media(max-width:768px){
+            .stats-row{grid-template-columns:repeat(2,1fr)}
+            .topbar-nav{display:none}
         }
     </style>
 </head>
 <body>
-    <!-- ═══ HEADER ═══ -->
-    <div class="header">
-        <div class="logo">
-            <div class="logo-icon">🫚</div>
-            Ginger Universe
+    <!-- ═══ TOPBAR ═══ -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <div class="topbar-logo">🫚</div>
+            <span class="topbar-title">Ginger Universe</span>
         </div>
-        <div class="header-right">
-            {% if claude_available %}
-                <span class="mode-badge auto">⚡ Auto Mode</span>
-            {% else %}
-                <span class="mode-badge manual">📋 Manual Mode</span>
+        <div class="topbar-nav">
+            <a href="/dashboard" class="active">Generator</a>
+            <a href="/history">History</a>
+            {% if user.role == 'super_admin' %}
+                <a href="/prompts">Prompts</a>
             {% endif %}
-            <span style="opacity:0.7">{{ username }}</span>
-            <a href="/logout" class="logout-btn">Logout</a>
+        </div>
+        <div class="topbar-right">
+            {% if claude_available %}
+                <span class="badge badge-green">⚡ Auto</span>
+            {% else %}
+                <span class="badge badge-amber">📋 Manual</span>
+            {% endif %}
+            <span class="badge badge-blue">{{ user.role }}</span>
+            <span style="opacity:.7">{{ user.name or user.email }}</span>
+            <a href="/logout" class="btn-sm btn-ghost">Logout</a>
         </div>
     </div>
 
-    <div class="container">
-
-        <!-- ═══ INPUT CARD ═══ -->
-        <div class="card">
-            <h2>Generate Doctor Profile</h2>
-            <div class="url-row">
-                <input type="url" id="doctorUrl" class="url-input"
-                       placeholder="https://hospital-website.com/dr-john-smith" required>
-                <button class="btn-generate" id="generateBtn" onclick="generateProfile()">
-                    Generate
-                </button>
+    <div class="main">
+        <!-- ═══ STATS ═══ -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-label">Profiles Generated</div>
+                <div class="stat-value">{{ stats.total or 0 }}</div>
+                <div class="stat-sub">{{ stats.today or 0 }} today</div>
             </div>
+            <div class="stat-card">
+                <div class="stat-label">This Week</div>
+                <div class="stat-value">{{ stats.week or 0 }}</div>
+                <div class="stat-sub">profiles generated</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Treatment Dictionary</div>
+                <div class="stat-value">{{ treatment_count or 0 }}</div>
+                <div class="stat-sub">across {{ specialty_count or 0 }} specialties</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">AI Engine</div>
+                <div class="stat-value" style="font-size:16px;margin-top:8px">Claude Sonnet</div>
+                <div class="stat-sub">{% if claude_available %}Connected{% else %}Manual mode{% endif %}</div>
+            </div>
+        </div>
+
+        <!-- ═══ GENERATOR ═══ -->
+        <div class="card">
+            <h2>🔍 Generate Doctor Profile</h2>
+            <p style="font-size:13px;color:#6B7280;margin-bottom:16px">
+                Enter one or more URLs from hospital websites. The system will scrape all pages, match to our treatment dictionary, and generate a professional profile.
+            </p>
+
+            <div class="url-area" id="urlArea">
+                <div class="url-row">
+                    <input type="url" class="url-input" placeholder="https://hospital-website.com/doctor/dr-name" autofocus>
+                    <button class="url-remove hidden" onclick="removeUrl(this)" title="Remove">✕</button>
+                </div>
+            </div>
+            <button class="add-url-btn" onclick="addUrlRow()">+ Add another URL</button>
+
+            <div class="btn-row">
+                <button class="btn btn-orange" id="generateBtn" onclick="generateProfile()">⚡ Generate Profile</button>
+            </div>
+
             <div id="statusBar" class="status-bar"></div>
         </div>
 
-        <!-- ═══ EXTRACTED DATA (shown after scrape) ═══ -->
-        <div id="dataCard" class="card hidden">
-            <h2>Extracted Information</h2>
-            <div id="dataGrid" class="data-grid"></div>
-            <div id="matchedSection" style="margin-top:16px">
-                <div class="data-label" style="margin-bottom:6px">Matched Procedures</div>
-                <div id="proceduresList" class="procedures-list"></div>
-            </div>
+        <!-- ═══ SCRAPED DATA SUMMARY ═══ -->
+        <div id="scrapeCard" class="card hidden">
+            <h3>📊 Scraped Data Summary</h3>
+            <div id="scrapeSummary" class="scrape-summary"></div>
         </div>
 
-        <!-- ═══ AUTO RESULT (Claude responded) ═══ -->
-        <div id="autoResult" class="card hidden">
-            <h2>Generated Profile</h2>
-            <div id="profileContent" class="profile-content"></div>
-            <div class="action-row">
-                <button class="btn btn-teal" onclick="downloadDocument()">⬇ Download .docx</button>
+        <!-- ═══ PROFILE EDITOR ═══ -->
+        <div id="editorCard" class="card hidden">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h2 id="profileTitle">✏️ Generated Profile</h2>
+                <div id="profileIdBadge" class="hidden" style="font-size:12px;color:#9CA3AF"></div>
+            </div>
+            <div class="editor-toolbar">
+                <button class="btn btn-teal" onclick="downloadDoc()">⬇ Download .docx</button>
                 <button class="btn btn-outline" onclick="copyProfile()">📋 Copy Text</button>
-                <button class="btn btn-outline" onclick="showPrompt()">👁 View Prompt</button>
+                <button class="btn btn-outline" onclick="saveProfile()">💾 Save Changes</button>
+                <button class="btn btn-outline" onclick="regenerate()">🔄 Regenerate</button>
+                <button class="btn btn-outline" onclick="togglePrompt()">👁 View Prompt</button>
             </div>
+            <textarea id="profileEditor" class="editor-area"></textarea>
         </div>
 
-        <!-- ═══ MANUAL MODE (no API key or API failed) ═══ -->
-        <div id="manualSection" class="card hidden">
-            <h2>Step 1 — Copy This Prompt to Claude.ai</h2>
+        <!-- ═══ PROMPT VIEWER ═══ -->
+        <div id="promptCard" class="card hidden">
+            <h3>🧠 Prompt Sent to Claude</h3>
             <div id="promptBox" class="prompt-box"></div>
-            <button class="btn btn-outline" onclick="copyPrompt()" style="margin-bottom:24px">📋 Copy Prompt</button>
-
-            <h2 style="margin-top:8px">Step 2 — Paste Claude's Response</h2>
-            <textarea id="manualResponse" class="response-textarea"
-                      placeholder="Paste the response from Claude.ai here..."></textarea>
-            <div class="action-row" style="margin-top:12px">
-                <button class="btn btn-teal" onclick="downloadFromManual()">⬇ Download .docx</button>
-            </div>
-        </div>
-
-        <!-- ═══ PROMPT VIEWER (toggled) ═══ -->
-        <div id="promptViewer" class="card hidden">
-            <h2>Claude Prompt (Reference)</h2>
-            <div id="promptViewerBox" class="prompt-box"></div>
             <button class="btn btn-outline" onclick="copyPrompt()">📋 Copy Prompt</button>
         </div>
 
+        <!-- ═══ RECENT HISTORY ═══ -->
+        {% if recent_profiles %}
+        <div class="card">
+            <h2>📁 Recent Profiles</h2>
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Doctor</th>
+                        <th>Status</th>
+                        <th>Created By</th>
+                        <th>Date</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in recent_profiles %}
+                    <tr>
+                        <td style="font-weight:600">{{ p.doctor_name or 'Untitled' }}</td>
+                        <td><span class="status-badge status-{{ p.status }}">{{ p.status }}</span></td>
+                        <td style="color:#6B7280">{{ p.created_by }}</td>
+                        <td style="color:#6B7280;font-size:12px">{{ p.created_at.strftime('%b %d, %H:%M') if p.created_at else '' }}</td>
+                        <td><button class="btn-sm btn-outline" onclick="loadProfile({{ p.id }})">Open</button></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
     </div>
 
     <script>
-        // ── State ────────────────────────────────────
-        let currentDoctorData = null;
-        let currentClaudeResponse = null;
+        // ── State ──
+        let currentProfileId = null;
         let currentPrompt = null;
+        let currentDoctorName = null;
 
-        // ── Generate Profile ─────────────────────────
+        // ── URL Rows ──
+        function addUrlRow() {
+            const area = document.getElementById('urlArea');
+            const row = document.createElement('div');
+            row.className = 'url-row';
+            row.innerHTML = `
+                <input type="url" class="url-input" placeholder="https://another-source.com/doctor">
+                <button class="url-remove" onclick="removeUrl(this)" title="Remove">✕</button>
+            `;
+            area.appendChild(row);
+            row.querySelector('input').focus();
+            updateRemoveButtons();
+        }
+
+        function removeUrl(btn) {
+            btn.closest('.url-row').remove();
+            updateRemoveButtons();
+        }
+
+        function updateRemoveButtons() {
+            const rows = document.querySelectorAll('.url-row');
+            rows.forEach((row, i) => {
+                const btn = row.querySelector('.url-remove');
+                if (rows.length > 1) btn.classList.remove('hidden');
+                else btn.classList.add('hidden');
+            });
+        }
+
+        function getUrls() {
+            return Array.from(document.querySelectorAll('.url-input'))
+                .map(i => i.value.trim())
+                .filter(Boolean);
+        }
+
+        // ── Generate ──
         async function generateProfile() {
-            const url = document.getElementById('doctorUrl').value.trim();
-            if (!url) return showStatus('Please enter a doctor URL', 'error');
+            const urls = getUrls();
+            if (!urls.length) return showStatus('Enter at least one URL', 'error');
 
             const btn = document.getElementById('generateBtn');
             btn.disabled = true;
             btn.textContent = 'Analyzing...';
-
-            // Reset
-            hideAll();
-            showStatus('<div class="spinner"></div> Scraping webpage & matching procedures...', 'loading');
+            hideResults();
+            showStatus('<div class="spinner"></div> Scraping ' + urls.length + ' URL(s) & generating profile...', 'loading');
 
             try {
                 const res = await fetch('/generate', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ doctor_url: url })
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ urls })
                 });
-
                 const data = await res.json();
 
                 if (data.error) {
                     showStatus('Error: ' + data.error, 'error');
-                    btn.disabled = false;
-                    btn.textContent = 'Generate';
+                    btn.disabled = false; btn.textContent = '⚡ Generate Profile';
                     return;
                 }
 
-                // Store state
-                currentDoctorData = data.doctor_data;
-                currentPrompt = data.claude_prompt;
-
-                // Show extracted data
-                renderExtractedData(data.doctor_data, data.matched_procedures);
-
-                if (data.automated && data.claude_response) {
-                    // ✅ Auto mode — Claude responded
-                    currentClaudeResponse = data.claude_response;
-                    document.getElementById('profileContent').textContent = data.claude_response;
-                    document.getElementById('autoResult').classList.remove('hidden');
-                    showStatus('✅ Profile generated automatically via Claude API', 'success');
-                } else {
-                    // 📋 Manual mode
-                    document.getElementById('promptBox').textContent = data.claude_prompt;
-                    document.getElementById('manualSection').classList.remove('hidden');
-
-                    if (data.api_error) {
-                        showStatus('⚠️ Claude API unavailable — use manual mode below. Error: ' + data.api_error, 'error');
-                    } else {
-                        showStatus('📋 Prompt ready — copy it to Claude.ai and paste the response back', 'success');
-                    }
+                // Show scrape summary
+                if (data.scraped_data) {
+                    renderScrapeSummary(data.scraped_data);
                 }
 
-            } catch (err) {
-                showStatus('Network error: ' + err.message, 'error');
+                if (data.automated && data.claude_response) {
+                    currentProfileId = data.profile_id;
+                    currentDoctorName = data.doctor_name;
+                    currentPrompt = data.prompt_used;
+
+                    document.getElementById('profileEditor').value = data.claude_response;
+                    document.getElementById('profileTitle').textContent = '✏️ ' + (data.doctor_name || 'Generated Profile');
+                    if (data.profile_id) {
+                        document.getElementById('profileIdBadge').textContent = '#' + data.profile_id;
+                        document.getElementById('profileIdBadge').classList.remove('hidden');
+                    }
+                    document.getElementById('editorCard').classList.remove('hidden');
+                    showStatus('✅ Profile generated — ' + data.treatment_count + ' treatments in dictionary, matched to doctor\'s specialty', 'success');
+                    document.getElementById('editorCard').scrollIntoView({behavior:'smooth',block:'start'});
+                } else {
+                    currentPrompt = data.prompt;
+                    document.getElementById('promptBox').textContent = data.prompt || '';
+                    document.getElementById('promptCard').classList.remove('hidden');
+                    showStatus(data.api_error
+                        ? '⚠️ Claude API error — use manual mode. Copy the prompt below.'
+                        : '📋 Manual mode — copy the prompt and paste into Claude.ai', 'success');
+                }
+            } catch(e) {
+                showStatus('Network error: ' + e.message, 'error');
             }
 
             btn.disabled = false;
-            btn.textContent = 'Generate';
+            btn.textContent = '⚡ Generate Profile';
         }
 
-        // ── Render extracted data ────────────────────
-        function renderExtractedData(doc, procedures) {
-            const grid = document.getElementById('dataGrid');
-            const rows = [
-                ['Name', doc.name || '—'],
-                ['Specialties', (doc.specialties || []).map(s => '<span class="tag">' + s + '</span>').join('') || '—'],
-                ['Qualifications', (doc.qualifications || []).map(q => '<span class="tag green">' + q + '</span>').join('') || '—'],
-                ['Experience', doc.experience || '—'],
-                ['Hospitals', (doc.hospitals || []).map(h => '<span class="tag orange">' + h + '</span>').join('') || '—'],
-            ];
-            grid.innerHTML = rows.map(([label, val]) =>
-                '<div class="data-label">' + label + '</div><div class="data-value">' + val + '</div>'
-            ).join('');
-
-            // Procedures
-            const procList = document.getElementById('proceduresList');
-            if (procedures && procedures.length > 0) {
-                procList.innerHTML = procedures.map(p =>
-                    '<span class="proc-tag">' + p.procedure +
-                    ' <span class="proc-score">(' + p.score + ')</span></span>'
-                ).join('');
-            } else {
-                procList.innerHTML = '<span style="color:#9CA3AF;font-size:13px">No procedures matched</span>';
+        function renderScrapeSummary(data) {
+            const el = document.getElementById('scrapeSummary');
+            let html = '';
+            if (data.urls) {
+                html += '<div style="margin-bottom:8px"><span class="label">Sources:</span>';
+                data.urls.forEach(u => html += '<span class="tag tag-blue">' + new URL(u).hostname + '</span>');
+                html += '</div>';
             }
-
-            document.getElementById('dataCard').classList.remove('hidden');
+            if (data.titles && data.titles.length) {
+                html += '<div><span class="label">Pages:</span>';
+                data.titles.forEach(t => html += '<span class="tag tag-green">' + t.substring(0,60) + '</span>');
+                html += '</div>';
+            }
+            html += '<div style="margin-top:8px;color:#9CA3AF;font-size:12px">' +
+                    (data.url_count || 0) + ' page(s) scraped, ~' +
+                    Math.round((data.combined_text||'').length/1000) + 'KB text extracted</div>';
+            el.innerHTML = html;
+            document.getElementById('scrapeCard').classList.remove('hidden');
         }
 
-        // ── Download .docx ───────────────────────────
-        async function downloadDocument() {
-            await createDoc(currentClaudeResponse);
+        // ── Save / Edit ──
+        async function saveProfile() {
+            if (!currentProfileId) return showStatus('No profile to save — generate one first', 'error');
+            const content = document.getElementById('profileEditor').value;
+            try {
+                const res = await fetch('/api/profile/' + currentProfileId + '/save', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ content })
+                });
+                const data = await res.json();
+                showStatus(data.success ? '💾 Changes saved!' : 'Save failed', data.success ? 'success' : 'error');
+            } catch(e) { showStatus('Error: ' + e.message, 'error'); }
         }
 
-        async function downloadFromManual() {
-            const text = document.getElementById('manualResponse').value.trim();
-            if (!text) return showStatus('Please paste Claude\'s response first', 'error');
-            currentClaudeResponse = text;
-            await createDoc(text);
+        // ── Load from history ──
+        async function loadProfile(id) {
+            try {
+                const res = await fetch('/api/profile/' + id);
+                const data = await res.json();
+                if (data.error) return showStatus(data.error, 'error');
+
+                currentProfileId = data.id;
+                currentDoctorName = data.doctor_name;
+                currentPrompt = data.prompt_used;
+
+                document.getElementById('profileEditor').value = data.edited_content || data.generated_content || '';
+                document.getElementById('profileTitle').textContent = '✏️ ' + (data.doctor_name || 'Profile #' + id);
+                document.getElementById('profileIdBadge').textContent = '#' + id;
+                document.getElementById('profileIdBadge').classList.remove('hidden');
+                document.getElementById('editorCard').classList.remove('hidden');
+                document.getElementById('editorCard').scrollIntoView({behavior:'smooth'});
+                showStatus('Loaded profile #' + id, 'success');
+            } catch(e) { showStatus('Error: ' + e.message, 'error'); }
         }
 
-        async function createDoc(responseText) {
-            showStatus('<div class="spinner"></div> Creating Word document...', 'loading');
-
+        // ── Download .docx ──
+        async function downloadDoc() {
+            const content = document.getElementById('profileEditor').value;
+            if (!content) return;
+            showStatus('<div class="spinner"></div> Creating document...', 'loading');
             try {
                 const res = await fetch('/create-document', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        doctor_data: currentDoctorData,
-                        claude_response: responseText
-                    })
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ doctor_name: currentDoctorName || 'Doctor', content })
                 });
-
                 if (res.ok) {
                     const blob = await res.blob();
                     const a = document.createElement('a');
                     a.href = URL.createObjectURL(blob);
-
-                    // Extract filename from Content-Disposition header
                     const cd = res.headers.get('Content-Disposition');
-                    const match = cd && cd.match(/filename[^;=\n]*=["']?([^"';\n]*)["']?/);
-                    a.download = match ? match[1] : 'doctor_profile.docx';
-
-                    document.body.appendChild(a);
-                    a.click();
-                    URL.revokeObjectURL(a.href);
-                    a.remove();
-                    showStatus('✅ Document downloaded!', 'success');
-                } else {
-                    const err = await res.json();
-                    showStatus('Error: ' + (err.error || 'Download failed'), 'error');
-                }
-            } catch (err) {
-                showStatus('Error: ' + err.message, 'error');
-            }
+                    const m = cd && cd.match(/filename="?([^";\n]*)"?/);
+                    a.download = m ? m[1] : 'profile.docx';
+                    a.click(); URL.revokeObjectURL(a.href);
+                    showStatus('✅ Downloaded!', 'success');
+                } else showStatus('Download failed', 'error');
+            } catch(e) { showStatus('Error: ' + e.message, 'error'); }
         }
 
-        // ── Copy helpers ─────────────────────────────
+        function regenerate() {
+            document.getElementById('editorCard').classList.add('hidden');
+            document.querySelector('.url-input').focus();
+        }
+
+        // ── Helpers ──
         function copyProfile() {
-            navigator.clipboard.writeText(currentClaudeResponse || '');
-            flashBtn(event.target, '✅ Copied!');
+            navigator.clipboard.writeText(document.getElementById('profileEditor').value);
+            flashStatus('📋 Copied to clipboard!');
         }
-
         function copyPrompt() {
-            navigator.clipboard.writeText(currentPrompt || '');
-            flashBtn(event.target, '✅ Copied!');
+            navigator.clipboard.writeText(currentPrompt || document.getElementById('promptBox').textContent);
+            flashStatus('📋 Prompt copied!');
+        }
+        function togglePrompt() {
+            const el = document.getElementById('promptCard');
+            if (el.classList.contains('hidden')) {
+                document.getElementById('promptBox').textContent = currentPrompt || '';
+                el.classList.remove('hidden');
+                el.scrollIntoView({behavior:'smooth'});
+            } else el.classList.add('hidden');
         }
 
-        function flashBtn(btn, msg) {
-            const orig = btn.textContent;
-            btn.textContent = msg;
-            setTimeout(() => btn.textContent = orig, 1500);
-        }
-
-        // ── Toggle prompt viewer ─────────────────────
-        function showPrompt() {
-            const viewer = document.getElementById('promptViewer');
-            if (viewer.classList.contains('hidden')) {
-                document.getElementById('promptViewerBox').textContent = currentPrompt || '';
-                viewer.classList.remove('hidden');
-                viewer.scrollIntoView({ behavior: 'smooth' });
-            } else {
-                viewer.classList.add('hidden');
-            }
-        }
-
-        // ── Status bar ───────────────────────────────
         function showStatus(msg, type) {
             const bar = document.getElementById('statusBar');
             bar.innerHTML = msg;
             bar.className = 'status-bar ' + type;
         }
-
-        // ── Reset ────────────────────────────────────
-        function hideAll() {
-            ['dataCard', 'autoResult', 'manualSection', 'promptViewer'].forEach(id =>
-                document.getElementById(id).classList.add('hidden')
-            );
+        function flashStatus(msg) { showStatus(msg, 'success'); setTimeout(() => { document.getElementById('statusBar').className = 'status-bar'; }, 2000); }
+        function hideResults() {
+            ['scrapeCard','editorCard','promptCard'].forEach(id => document.getElementById(id).classList.add('hidden'));
         }
 
-        // ── Enter key to submit ──────────────────────
-        document.getElementById('doctorUrl').addEventListener('keydown', e => {
-            if (e.key === 'Enter') generateProfile();
+        // Enter key on last URL input
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && e.target.classList.contains('url-input')) generateProfile();
         });
     </script>
 </body>

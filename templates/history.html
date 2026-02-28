@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History — Ginger Universe</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'DM Sans',sans-serif;background:#F0F2F5;color:#1F2937;min-height:100vh}
+        .topbar{background:linear-gradient(135deg,#0B2545,#13315C);color:white;padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+        .topbar-left{display:flex;align-items:center;gap:12px}
+        .topbar-logo{width:34px;height:34px;background:#F26522;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px}
+        .topbar-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:700}
+        .topbar-nav{display:flex;gap:4px}
+        .topbar-nav a{color:rgba(255,255,255,.7);text-decoration:none;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:500;transition:all .2s}
+        .topbar-nav a:hover,.topbar-nav a.active{background:rgba(255,255,255,.1);color:white}
+        .topbar-right{display:flex;align-items:center;gap:14px;font-size:13px}
+        .btn-sm{padding:5px 14px;border-radius:6px;font-size:12px;font-weight:600;border:none;cursor:pointer;font-family:inherit;text-decoration:none}
+        .btn-ghost{background:rgba(255,255,255,.1);color:white}
+
+        .main{max-width:1100px;margin:24px auto;padding:0 20px}
+        .card{background:white;border-radius:12px;padding:24px;border:1px solid #E5E7EB;margin-bottom:20px}
+        .card h2{font-family:'Playfair Display',serif;font-size:18px;color:#0B2545;margin-bottom:16px}
+
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        th{text-align:left;padding:12px;background:#F9FAFB;border-bottom:2px solid #E5E7EB;font-weight:600;color:#6B7280;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+        td{padding:12px;border-bottom:1px solid #F3F4F6}
+        tr:hover{background:#F9FAFB}
+        .status-badge{padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600}
+        .status-generated{background:#DBEAFE;color:#1E40AF}
+        .status-edited{background:#D1FAE5;color:#065F46}
+        .url-tag{display:inline-block;padding:2px 8px;background:#F3F4F6;border-radius:4px;font-size:11px;color:#6B7280;margin:1px}
+        .btn-open{padding:5px 12px;background:#0EA5A0;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none}
+        .btn-open:hover{background:#0C8C88}
+        .empty{text-align:center;padding:40px;color:#9CA3AF}
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <div class="topbar-left">
+            <div class="topbar-logo">🫚</div>
+            <span class="topbar-title">Ginger Universe</span>
+        </div>
+        <div class="topbar-nav">
+            <a href="/dashboard">Generator</a>
+            <a href="/history" class="active">History</a>
+            {% if user.role == 'super_admin' %}
+                <a href="/prompts">Prompts</a>
+            {% endif %}
+        </div>
+        <div class="topbar-right">
+            <span style="opacity:.7">{{ user.email }}</span>
+            <a href="/logout" class="btn-sm btn-ghost">Logout</a>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="card">
+            <h2>📁 Profile History</h2>
+
+            {% if profiles %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Doctor Name</th>
+                        <th>Source URLs</th>
+                        <th>Status</th>
+                        <th>Created By</th>
+                        <th>Date</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in profiles %}
+                    <tr>
+                        <td style="color:#9CA3AF">{{ p.id }}</td>
+                        <td style="font-weight:600">{{ p.doctor_name or 'Untitled' }}</td>
+                        <td>
+                            {% if p.source_urls %}
+                                {% for u in p.source_urls[:2] %}
+                                    <span class="url-tag">{{ u[:40] }}{% if u|length > 40 %}...{% endif %}</span>
+                                {% endfor %}
+                                {% if p.source_urls|length > 2 %}
+                                    <span class="url-tag">+{{ p.source_urls|length - 2 }} more</span>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td><span class="status-badge status-{{ p.status }}">{{ p.status }}</span></td>
+                        <td style="color:#6B7280">{{ p.created_by }}</td>
+                        <td style="color:#6B7280;font-size:12px">{{ p.created_at.strftime('%b %d, %H:%M') if p.created_at else '' }}</td>
+                        <td><a href="/dashboard" class="btn-open" onclick="sessionStorage.setItem('loadProfile',{{ p.id }})">Open</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+                <div class="empty">No profiles generated yet. Go to the <a href="/dashboard">Generator</a> to create your first one.</div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

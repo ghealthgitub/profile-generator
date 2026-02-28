@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Manager — Ginger Universe</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'DM Sans',sans-serif;background:#F0F2F5;color:#1F2937;min-height:100vh}
+        .topbar{background:linear-gradient(135deg,#0B2545,#13315C);color:white;padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+        .topbar-left{display:flex;align-items:center;gap:12px}
+        .topbar-logo{width:34px;height:34px;background:#F26522;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px}
+        .topbar-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:700}
+        .topbar-nav{display:flex;gap:4px}
+        .topbar-nav a{color:rgba(255,255,255,.7);text-decoration:none;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:500;transition:all .2s}
+        .topbar-nav a:hover,.topbar-nav a.active{background:rgba(255,255,255,.1);color:white}
+        .topbar-right{display:flex;align-items:center;gap:14px;font-size:13px}
+        .btn-sm{padding:5px 14px;border-radius:6px;font-size:12px;font-weight:600;border:none;cursor:pointer;font-family:inherit;text-decoration:none}
+        .btn-ghost{background:rgba(255,255,255,.1);color:white}
+
+        .main{max-width:1100px;margin:24px auto;padding:0 20px}
+        .card{background:white;border-radius:12px;padding:24px;border:1px solid #E5E7EB;margin-bottom:20px}
+        .card h2{font-family:'Playfair Display',serif;font-size:18px;color:#0B2545;margin-bottom:16px}
+
+        .prompt-list{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+        .prompt-item{
+            padding:14px 18px;border:2px solid #E5E7EB;border-radius:10px;
+            cursor:pointer;transition:all .2s;display:flex;justify-content:space-between;align-items:center;
+        }
+        .prompt-item:hover{border-color:#0EA5A0}
+        .prompt-item.active-prompt{border-color:#0EA5A0;background:#F0FDFA}
+        .prompt-item .name{font-weight:600;font-size:14px}
+        .prompt-item .meta{font-size:12px;color:#9CA3AF}
+        .active-badge{padding:3px 10px;background:#D1FAE5;color:#065F46;border-radius:12px;font-size:11px;font-weight:600}
+
+        .editor-section{margin-top:20px}
+        .input-field{width:100%;padding:10px 14px;border:2px solid #E5E7EB;border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:12px}
+        .input-field:focus{outline:none;border-color:#0EA5A0}
+        .prompt-editor{
+            width:100%;min-height:500px;padding:16px;border:2px solid #E5E7EB;border-radius:8px;
+            font-family:'Courier New',monospace;font-size:13px;line-height:1.6;resize:vertical;
+        }
+        .prompt-editor:focus{outline:none;border-color:#0EA5A0}
+
+        .help-text{background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:14px;font-size:13px;color:#92400E;margin-bottom:16px}
+        .help-text code{background:rgba(0,0,0,.05);padding:2px 6px;border-radius:4px;font-size:12px}
+
+        .btn-row{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+        .btn{padding:10px 22px;border:none;border-radius:8px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .2s}
+        .btn-teal{background:#0EA5A0;color:white}
+        .btn-teal:hover{background:#0C8C88}
+        .btn-orange{background:#F26522;color:white}
+        .btn-orange:hover{background:#D9541A}
+        .btn-outline{background:white;color:#374151;border:2px solid #D1D5DB}
+
+        .status{padding:10px 14px;border-radius:8px;margin-top:12px;font-size:13px;font-weight:500;display:none}
+        .status.success{display:block;background:#D1FAE5;color:#065F46}
+        .status.error{display:block;background:#FEE2E2;color:#991B1B}
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <div class="topbar-left">
+            <div class="topbar-logo">🫚</div>
+            <span class="topbar-title">Ginger Universe</span>
+        </div>
+        <div class="topbar-nav">
+            <a href="/dashboard">Generator</a>
+            <a href="/history">History</a>
+            <a href="/prompts" class="active">Prompts</a>
+        </div>
+        <div class="topbar-right">
+            <span style="opacity:.7">{{ user.email }}</span>
+            <a href="/logout" class="btn-sm btn-ghost">Logout</a>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="card">
+            <h2>🧠 Prompt Manager</h2>
+            <p style="font-size:13px;color:#6B7280;margin-bottom:16px">
+                Edit the prompt that drives the AI profile generation engine. The active prompt is used for all new profiles.
+            </p>
+
+            <div class="help-text">
+                <strong>Template placeholders:</strong><br>
+                <code>{scraped_data}</code> — Replaced with text extracted from the doctor's webpage(s)<br>
+                <code>{treatment_dictionary}</code> — Replaced with the full list of treatments/specialties from your database
+            </div>
+
+            <!-- Prompt list -->
+            <div class="prompt-list" id="promptList">
+                {% for p in prompts %}
+                <div class="prompt-item {% if p.is_active %}active-prompt{% endif %}"
+                     onclick="loadPrompt({{ p.id }}, '{{ p.name | e }}', {{ p.is_active | tojson }})">
+                    <div>
+                        <div class="name">{{ p.name }}</div>
+                        <div class="meta">Last updated: {{ p.updated_at.strftime('%b %d, %Y %H:%M') if p.updated_at else 'N/A' }}</div>
+                    </div>
+                    {% if p.is_active %}<span class="active-badge">Active</span>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <button class="btn btn-outline" onclick="newPrompt()">+ New Prompt Template</button>
+        </div>
+
+        <!-- Editor -->
+        <div class="card" id="editorSection">
+            <h2 id="editorTitle">Edit Prompt</h2>
+            <input type="text" class="input-field" id="promptName" placeholder="Prompt name (e.g. 'Detailed Profile v2')">
+            <textarea class="prompt-editor" id="promptText"></textarea>
+
+            <div class="btn-row">
+                <button class="btn btn-teal" onclick="savePromptChanges(false)">💾 Save</button>
+                <button class="btn btn-orange" onclick="savePromptChanges(true)">⚡ Save & Set Active</button>
+            </div>
+            <div id="saveStatus" class="status"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentPromptId = null;
+
+        // Load first prompt on page load
+        {% if prompts %}
+            loadPrompt({{ prompts[0].id }}, '{{ prompts[0].name | e }}', {{ prompts[0].is_active | tojson }});
+        {% endif %}
+
+        function loadPrompt(id, name, isActive) {
+            currentPromptId = id;
+            document.getElementById('promptName').value = name;
+            document.getElementById('editorTitle').textContent = isActive ? '✏️ Edit Active Prompt' : '✏️ Edit Prompt';
+
+            // Fetch full text
+            fetch('/api/prompts').then(r => r.json()).then(prompts => {
+                const p = prompts.find(x => x.id === id);
+                if (p) document.getElementById('promptText').value = p.prompt_text;
+            });
+        }
+
+        function newPrompt() {
+            currentPromptId = null;
+            document.getElementById('promptName').value = '';
+            document.getElementById('promptText').value = '';
+            document.getElementById('editorTitle').textContent = '✏️ New Prompt Template';
+            document.getElementById('promptName').focus();
+        }
+
+        async function savePromptChanges(setActive) {
+            const name = document.getElementById('promptName').value.trim();
+            const text = document.getElementById('promptText').value.trim();
+            if (!name || !text) return showSaveStatus('Name and prompt text are required', 'error');
+
+            try {
+                const res = await fetch('/api/prompts', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({
+                        id: currentPromptId,
+                        name, prompt_text: text,
+                        set_active: setActive
+                    })
+                });
+                const data = await res.json();
+                showSaveStatus(data.success ? '✅ Saved!' + (setActive ? ' Now active.' : '') : 'Save failed', data.success ? 'success' : 'error');
+                if (data.success) setTimeout(() => location.reload(), 1000);
+            } catch(e) { showSaveStatus('Error: ' + e.message, 'error'); }
+        }
+
+        function showSaveStatus(msg, type) {
+            const el = document.getElementById('saveStatus');
+            el.textContent = msg;
+            el.className = 'status ' + type;
+        }
+    </script>
+</body>
+</html>
