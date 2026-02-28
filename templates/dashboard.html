@@ -3,354 +3,570 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Ginger Universe</title>
+    <title>Dashboard — Ginger Universe</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f5f5;
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #F3F4F6;
+            color: #1F2937;
+            min-height: 100vh;
         }
+
+        /* ── Header ─────────────────────────────────── */
         .header {
-            background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
+            background: linear-gradient(135deg, #0B2545 0%, #13315C 100%);
             color: white;
-            padding: 20px 40px;
+            padding: 16px 32px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 12px rgba(11,37,69,0.3);
         }
-        .logo { font-size: 24px; font-weight: bold; }
-        .logo span { font-size: 30px; margin-right: 10px; }
-        .user-info { display: flex; align-items: center; gap: 20px; }
-        .logout-btn {
-            background: rgba(255,255,255,0.2);
-            padding: 8px 20px;
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Playfair Display', serif;
+            font-size: 22px;
+            font-weight: 700;
+        }
+        .logo-icon {
+            width: 40px; height: 40px;
+            background: #F26522;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 14px;
+        }
+        .mode-badge {
+            padding: 4px 12px;
             border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .mode-badge.auto { background: rgba(16,185,129,0.2); color: #6EE7B7; }
+        .mode-badge.manual { background: rgba(251,191,36,0.2); color: #FCD34D; }
+        .logout-btn {
+            padding: 6px 16px;
+            border-radius: 6px;
             text-decoration: none;
             color: white;
-            transition: background 0.3s;
+            background: rgba(255,255,255,0.1);
+            font-size: 13px;
+            transition: background 0.2s;
         }
-        .logout-btn:hover { background: rgba(255,255,255,0.3); }
-        
+        .logout-btn:hover { background: rgba(255,255,255,0.2); }
+
+        /* ── Main Container ─────────────────────────── */
         .container {
-            max-width: 1200px;
-            margin: 40px auto;
+            max-width: 960px;
+            margin: 32px auto;
             padding: 0 20px;
         }
-        
+
+        /* ── Cards ──────────────────────────────────── */
         .card {
             background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 2px 20px rgba(0,0,0,0.08);
-            margin-bottom: 30px;
+            border-radius: 12px;
+            padding: 28px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+            margin-bottom: 24px;
+            border: 1px solid #E5E7EB;
         }
-        
-        h2 {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 24px;
+        .card h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 20px;
+            color: #0B2545;
+            margin-bottom: 16px;
         }
-        
-        .input-group {
-            margin-bottom: 20px;
+
+        /* ── Input ──────────────────────────────────── */
+        .url-row {
+            display: flex;
+            gap: 12px;
         }
-        
-        label {
-            display: block;
-            color: #555;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-        
-        input[type="url"] {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e0e0e0;
+        .url-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #E5E7EB;
             border-radius: 8px;
             font-size: 15px;
+            font-family: inherit;
+            transition: border-color 0.2s;
         }
-        
-        input:focus {
+        .url-input:focus {
             outline: none;
-            border-color: #FF6B35;
+            border-color: #0EA5A0;
+            box-shadow: 0 0 0 3px rgba(14,165,160,0.1);
         }
-        
-        .btn {
-            padding: 12px 30px;
-            background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
+        .btn-generate {
+            padding: 12px 28px;
+            background: #F26522;
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
+            font-family: inherit;
             cursor: pointer;
-            transition: transform 0.2s;
+            white-space: nowrap;
+            transition: all 0.2s;
         }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-        }
-        
-        .btn:disabled {
-            opacity: 0.5;
+        .btn-generate:hover { background: #D9541A; transform: translateY(-1px); }
+        .btn-generate:disabled {
+            opacity: 0.6;
             cursor: not-allowed;
+            transform: none;
         }
-        
-        .prompt-box {
-            background: #f9f9f9;
-            border: 2px solid #e0e0e0;
+
+        /* ── Status Bar ─────────────────────────────── */
+        .status-bar {
+            padding: 12px 16px;
             border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-            max-height: 400px;
+            margin-top: 16px;
+            font-size: 14px;
+            font-weight: 500;
+            display: none;
+        }
+        .status-bar.loading {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #FEF3C7;
+            color: #92400E;
+            border: 1px solid #FDE68A;
+        }
+        .status-bar.success {
+            display: block;
+            background: #D1FAE5;
+            color: #065F46;
+            border: 1px solid #A7F3D0;
+        }
+        .status-bar.error {
+            display: block;
+            background: #FEE2E2;
+            color: #991B1B;
+            border: 1px solid #FECACA;
+        }
+
+        /* Spinner */
+        .spinner {
+            width: 18px; height: 18px;
+            border: 2.5px solid #FDE68A;
+            border-top-color: #92400E;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Extracted Data Card ────────────────────── */
+        .data-grid {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 8px 16px;
+            font-size: 14px;
+        }
+        .data-label {
+            font-weight: 600;
+            color: #6B7280;
+        }
+        .data-value {
+            color: #1F2937;
+        }
+        .tag {
+            display: inline-block;
+            padding: 2px 10px;
+            background: #EFF6FF;
+            color: #1E40AF;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            margin: 2px 4px 2px 0;
+        }
+        .tag.green { background: #ECFDF5; color: #065F46; }
+        .tag.orange { background: #FFF7ED; color: #9A3412; }
+
+        /* ── Profile Result ─────────────────────────── */
+        .profile-content {
+            background: #FAFAFA;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            padding: 24px;
+            font-size: 14px;
+            line-height: 1.7;
+            max-height: 500px;
             overflow-y: auto;
             white-space: pre-wrap;
+            margin-bottom: 16px;
         }
-        
-        .response-box {
+        .profile-content::-webkit-scrollbar { width: 6px; }
+        .profile-content::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
+
+        .action-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-teal { background: #0EA5A0; color: white; }
+        .btn-teal:hover { background: #0C8C88; }
+        .btn-navy { background: #0B2545; color: white; }
+        .btn-navy:hover { background: #13315C; }
+        .btn-outline {
+            background: white;
+            color: #374151;
+            border: 2px solid #D1D5DB;
+        }
+        .btn-outline:hover { border-color: #9CA3AF; }
+
+        /* ── Manual Mode ────────────────────────────── */
+        .prompt-box {
+            background: #1F2937;
+            color: #E5E7EB;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 350px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-bottom: 12px;
+        }
+        .response-textarea {
             width: 100%;
-            min-height: 200px;
-            padding: 15px;
-            border: 2px solid #e0e0e0;
+            min-height: 180px;
+            padding: 16px;
+            border: 2px solid #E5E7EB;
             border-radius: 8px;
             font-size: 14px;
             font-family: inherit;
             resize: vertical;
+            transition: border-color 0.2s;
         }
-        
-        .copy-btn {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 8px 20px;
+        .response-textarea:focus {
+            outline: none;
+            border-color: #0EA5A0;
+        }
+
+        /* ── Matched Procedures ─────────────────────── */
+        .procedures-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .proc-tag {
+            padding: 4px 10px;
+            background: #F0FDF4;
+            border: 1px solid #BBF7D0;
+            color: #166534;
             border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-top: 10px;
+            font-size: 12px;
         }
-        
-        .copy-btn:hover {
-            background: #45a049;
+        .proc-score {
+            font-weight: 700;
+            color: #15803D;
+            margin-left: 4px;
         }
-        
-        .status {
-            padding: 10px 15px;
-            border-radius: 8px;
-            margin: 15px 0;
-            font-weight: 600;
-        }
-        
-        .status.loading {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .status.success {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .status.error {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        
-        .hidden {
-            display: none;
-        }
-        
-        .steps {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin: 30px 0;
-        }
-        
-        .step {
-            text-align: center;
-            padding: 20px;
-            background: #f9f9f9;
-            border-radius: 10px;
-        }
-        
-        .step-number {
-            width: 40px;
-            height: 40px;
-            background: #FF6B35;
-            color: white;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        
-        .step-title {
-            font-weight: 600;
-            color: #333;
+
+        /* ── Hidden ─────────────────────────────────── */
+        .hidden { display: none !important; }
+
+        /* ── Responsive ─────────────────────────────── */
+        @media (max-width: 640px) {
+            .header { padding: 14px 16px; }
+            .container { padding: 0 12px; }
+            .url-row { flex-direction: column; }
+            .action-row { flex-direction: column; }
         }
     </style>
 </head>
 <body>
+    <!-- ═══ HEADER ═══ -->
     <div class="header">
         <div class="logo">
-            <span>🫚</span>Ginger Universe
+            <div class="logo-icon">🫚</div>
+            Ginger Universe
         </div>
-        <div class="user-info">
-            <span>{{ username }}</span>
+        <div class="header-right">
+            {% if claude_available %}
+                <span class="mode-badge auto">⚡ Auto Mode</span>
+            {% else %}
+                <span class="mode-badge manual">📋 Manual Mode</span>
+            {% endif %}
+            <span style="opacity:0.7">{{ username }}</span>
             <a href="/logout" class="logout-btn">Logout</a>
         </div>
     </div>
-    
+
     <div class="container">
+
+        <!-- ═══ INPUT CARD ═══ -->
         <div class="card">
             <h2>Generate Doctor Profile</h2>
-            
-            <div class="input-group">
-                <label for="doctorUrl">Doctor's Website URL</label>
-                <input type="url" id="doctorUrl" placeholder="https://example.com/dr-john-smith" required>
+            <div class="url-row">
+                <input type="url" id="doctorUrl" class="url-input"
+                       placeholder="https://hospital-website.com/dr-john-smith" required>
+                <button class="btn-generate" id="generateBtn" onclick="generateProfile()">
+                    Generate
+                </button>
             </div>
-            
-            <button class="btn" onclick="generateProfile()">Generate Profile</button>
-            
-            <div id="status" class="status hidden"></div>
+            <div id="statusBar" class="status-bar"></div>
         </div>
-        
-        <div id="promptSection" class="card hidden">
-            <h2>Step 1: Copy This Prompt to Claude.ai</h2>
-            <div class="prompt-box" id="promptBox"></div>
-            <button class="copy-btn" onclick="copyPrompt()">📋 Copy Prompt</button>
-            
-            <div class="steps" style="margin-top: 30px;">
-                <div class="step">
-                    <div class="step-number">1</div>
-                    <div class="step-title">Copy the prompt above</div>
-                </div>
-                <div class="step">
-                    <div class="step-number">2</div>
-                    <div class="step-title">Go to Claude.ai</div>
-                </div>
-                <div class="step">
-                    <div class="step-number">3</div>
-                    <div class="step-title">Paste & get response</div>
-                </div>
-                <div class="step">
-                    <div class="step-number">4</div>
-                    <div class="step-title">Paste response below</div>
-                </div>
+
+        <!-- ═══ EXTRACTED DATA (shown after scrape) ═══ -->
+        <div id="dataCard" class="card hidden">
+            <h2>Extracted Information</h2>
+            <div id="dataGrid" class="data-grid"></div>
+            <div id="matchedSection" style="margin-top:16px">
+                <div class="data-label" style="margin-bottom:6px">Matched Procedures</div>
+                <div id="proceduresList" class="procedures-list"></div>
             </div>
         </div>
-        
-        <div id="responseSection" class="card hidden">
-            <h2>Step 2: Paste Claude's Response Here</h2>
-            <textarea id="claudeResponse" class="response-box" placeholder="Paste Claude's response here..."></textarea>
-            <button class="btn" onclick="createDocument()" style="margin-top: 15px;">Create Word Document</button>
+
+        <!-- ═══ AUTO RESULT (Claude responded) ═══ -->
+        <div id="autoResult" class="card hidden">
+            <h2>Generated Profile</h2>
+            <div id="profileContent" class="profile-content"></div>
+            <div class="action-row">
+                <button class="btn btn-teal" onclick="downloadDocument()">⬇ Download .docx</button>
+                <button class="btn btn-outline" onclick="copyProfile()">📋 Copy Text</button>
+                <button class="btn btn-outline" onclick="showPrompt()">👁 View Prompt</button>
+            </div>
         </div>
+
+        <!-- ═══ MANUAL MODE (no API key or API failed) ═══ -->
+        <div id="manualSection" class="card hidden">
+            <h2>Step 1 — Copy This Prompt to Claude.ai</h2>
+            <div id="promptBox" class="prompt-box"></div>
+            <button class="btn btn-outline" onclick="copyPrompt()" style="margin-bottom:24px">📋 Copy Prompt</button>
+
+            <h2 style="margin-top:8px">Step 2 — Paste Claude's Response</h2>
+            <textarea id="manualResponse" class="response-textarea"
+                      placeholder="Paste the response from Claude.ai here..."></textarea>
+            <div class="action-row" style="margin-top:12px">
+                <button class="btn btn-teal" onclick="downloadFromManual()">⬇ Download .docx</button>
+            </div>
+        </div>
+
+        <!-- ═══ PROMPT VIEWER (toggled) ═══ -->
+        <div id="promptViewer" class="card hidden">
+            <h2>Claude Prompt (Reference)</h2>
+            <div id="promptViewerBox" class="prompt-box"></div>
+            <button class="btn btn-outline" onclick="copyPrompt()">📋 Copy Prompt</button>
+        </div>
+
     </div>
-    
+
     <script>
+        // ── State ────────────────────────────────────
         let currentDoctorData = null;
-        
+        let currentClaudeResponse = null;
+        let currentPrompt = null;
+
+        // ── Generate Profile ─────────────────────────
         async function generateProfile() {
-            const url = document.getElementById('doctorUrl').value;
-            const status = document.getElementById('status');
-            
-            if (!url) {
-                showStatus('Please enter a doctor URL', 'error');
-                return;
-            }
-            
-            showStatus('Analyzing webpage and generating prompt...', 'loading');
-            
+            const url = document.getElementById('doctorUrl').value.trim();
+            if (!url) return showStatus('Please enter a doctor URL', 'error');
+
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.textContent = 'Analyzing...';
+
+            // Reset
+            hideAll();
+            showStatus('<div class="spinner"></div> Scraping webpage & matching procedures...', 'loading');
+
             try {
-                const response = await fetch('/generate', {
+                const res = await fetch('/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ doctor_url: url })
                 });
-                
-                const data = await response.json();
-                
+
+                const data = await res.json();
+
                 if (data.error) {
                     showStatus('Error: ' + data.error, 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Generate';
                     return;
                 }
-                
+
+                // Store state
                 currentDoctorData = data.doctor_data;
-                document.getElementById('promptBox').textContent = data.claude_prompt;
-                document.getElementById('promptSection').classList.remove('hidden');
-                document.getElementById('responseSection').classList.remove('hidden');
-                
-                showStatus('✅ Prompt generated! Copy it to Claude.ai', 'success');
-                
-                // Scroll to prompt
-                document.getElementById('promptSection').scrollIntoView({ behavior: 'smooth' });
-                
-            } catch (error) {
-                showStatus('Error: ' + error.message, 'error');
+                currentPrompt = data.claude_prompt;
+
+                // Show extracted data
+                renderExtractedData(data.doctor_data, data.matched_procedures);
+
+                if (data.automated && data.claude_response) {
+                    // ✅ Auto mode — Claude responded
+                    currentClaudeResponse = data.claude_response;
+                    document.getElementById('profileContent').textContent = data.claude_response;
+                    document.getElementById('autoResult').classList.remove('hidden');
+                    showStatus('✅ Profile generated automatically via Claude API', 'success');
+                } else {
+                    // 📋 Manual mode
+                    document.getElementById('promptBox').textContent = data.claude_prompt;
+                    document.getElementById('manualSection').classList.remove('hidden');
+
+                    if (data.api_error) {
+                        showStatus('⚠️ Claude API unavailable — use manual mode below. Error: ' + data.api_error, 'error');
+                    } else {
+                        showStatus('📋 Prompt ready — copy it to Claude.ai and paste the response back', 'success');
+                    }
+                }
+
+            } catch (err) {
+                showStatus('Network error: ' + err.message, 'error');
             }
+
+            btn.disabled = false;
+            btn.textContent = 'Generate';
         }
-        
-        function copyPrompt() {
-            const promptText = document.getElementById('promptBox').textContent;
-            navigator.clipboard.writeText(promptText);
-            
-            const btn = event.target;
-            const originalText = btn.textContent;
-            btn.textContent = '✅ Copied!';
-            setTimeout(() => { btn.textContent = originalText; }, 2000);
-        }
-        
-        async function createDocument() {
-            const claudeResponse = document.getElementById('claudeResponse').value;
-            
-            if (!claudeResponse) {
-                showStatus('Please paste Claude\'s response first', 'error');
-                return;
+
+        // ── Render extracted data ────────────────────
+        function renderExtractedData(doc, procedures) {
+            const grid = document.getElementById('dataGrid');
+            const rows = [
+                ['Name', doc.name || '—'],
+                ['Specialties', (doc.specialties || []).map(s => '<span class="tag">' + s + '</span>').join('') || '—'],
+                ['Qualifications', (doc.qualifications || []).map(q => '<span class="tag green">' + q + '</span>').join('') || '—'],
+                ['Experience', doc.experience || '—'],
+                ['Hospitals', (doc.hospitals || []).map(h => '<span class="tag orange">' + h + '</span>').join('') || '—'],
+            ];
+            grid.innerHTML = rows.map(([label, val]) =>
+                '<div class="data-label">' + label + '</div><div class="data-value">' + val + '</div>'
+            ).join('');
+
+            // Procedures
+            const procList = document.getElementById('proceduresList');
+            if (procedures && procedures.length > 0) {
+                procList.innerHTML = procedures.map(p =>
+                    '<span class="proc-tag">' + p.procedure +
+                    ' <span class="proc-score">(' + p.score + ')</span></span>'
+                ).join('');
+            } else {
+                procList.innerHTML = '<span style="color:#9CA3AF;font-size:13px">No procedures matched</span>';
             }
-            
-            showStatus('Creating Word document...', 'loading');
-            
+
+            document.getElementById('dataCard').classList.remove('hidden');
+        }
+
+        // ── Download .docx ───────────────────────────
+        async function downloadDocument() {
+            await createDoc(currentClaudeResponse);
+        }
+
+        async function downloadFromManual() {
+            const text = document.getElementById('manualResponse').value.trim();
+            if (!text) return showStatus('Please paste Claude\'s response first', 'error');
+            currentClaudeResponse = text;
+            await createDoc(text);
+        }
+
+        async function createDoc(responseText) {
+            showStatus('<div class="spinner"></div> Creating Word document...', 'loading');
+
             try {
-                const response = await fetch('/create-document', {
+                const res = await fetch('/create-document', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         doctor_data: currentDoctorData,
-                        claude_response: claudeResponse
+                        claude_response: responseText
                     })
                 });
-                
-                if (response.ok) {
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
+
+                if (res.ok) {
+                    const blob = await res.blob();
                     const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'doctor_profile.docx';
+                    a.href = URL.createObjectURL(blob);
+
+                    // Extract filename from Content-Disposition header
+                    const cd = res.headers.get('Content-Disposition');
+                    const match = cd && cd.match(/filename[^;=\n]*=["']?([^"';\n]*)["']?/);
+                    a.download = match ? match[1] : 'doctor_profile.docx';
+
                     document.body.appendChild(a);
                     a.click();
-                    window.URL.revokeObjectURL(url);
-                    
-                    showStatus('✅ Document downloaded successfully!', 'success');
+                    URL.revokeObjectURL(a.href);
+                    a.remove();
+                    showStatus('✅ Document downloaded!', 'success');
                 } else {
-                    showStatus('Error creating document', 'error');
+                    const err = await res.json();
+                    showStatus('Error: ' + (err.error || 'Download failed'), 'error');
                 }
-                
-            } catch (error) {
-                showStatus('Error: ' + error.message, 'error');
+            } catch (err) {
+                showStatus('Error: ' + err.message, 'error');
             }
         }
-        
-        function showStatus(message, type) {
-            const status = document.getElementById('status');
-            status.textContent = message;
-            status.className = 'status ' + type;
-            status.classList.remove('hidden');
+
+        // ── Copy helpers ─────────────────────────────
+        function copyProfile() {
+            navigator.clipboard.writeText(currentClaudeResponse || '');
+            flashBtn(event.target, '✅ Copied!');
         }
+
+        function copyPrompt() {
+            navigator.clipboard.writeText(currentPrompt || '');
+            flashBtn(event.target, '✅ Copied!');
+        }
+
+        function flashBtn(btn, msg) {
+            const orig = btn.textContent;
+            btn.textContent = msg;
+            setTimeout(() => btn.textContent = orig, 1500);
+        }
+
+        // ── Toggle prompt viewer ─────────────────────
+        function showPrompt() {
+            const viewer = document.getElementById('promptViewer');
+            if (viewer.classList.contains('hidden')) {
+                document.getElementById('promptViewerBox').textContent = currentPrompt || '';
+                viewer.classList.remove('hidden');
+                viewer.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                viewer.classList.add('hidden');
+            }
+        }
+
+        // ── Status bar ───────────────────────────────
+        function showStatus(msg, type) {
+            const bar = document.getElementById('statusBar');
+            bar.innerHTML = msg;
+            bar.className = 'status-bar ' + type;
+        }
+
+        // ── Reset ────────────────────────────────────
+        function hideAll() {
+            ['dataCard', 'autoResult', 'manualSection', 'promptViewer'].forEach(id =>
+                document.getElementById(id).classList.add('hidden')
+            );
+        }
+
+        // ── Enter key to submit ──────────────────────
+        document.getElementById('doctorUrl').addEventListener('keydown', e => {
+            if (e.key === 'Enter') generateProfile();
+        });
     </script>
 </body>
 </html>

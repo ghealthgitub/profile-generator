@@ -1,6 +1,6 @@
 """
-🫚 GINGER UNIVERSE - Doctor Profile Generator
-Main Application File - FULL AUTOMATION ACTIVATED! 🚀
+🫚 GINGER UNIVERSE — Doctor Profile Generator
+Main Application — v2.0 (Integrated with Ginger Healthcare DB)
 """
 
 from flask import Flask, render_template, request, jsonify, session, send_file, redirect, url_for
@@ -14,26 +14,27 @@ from utils.scraper import scrape_doctor_webpage
 from utils.dictionary_matcher import match_procedures
 from utils.prompt_generator import generate_claude_prompt
 from utils.doc_generator import create_word_document
+from utils.db_connector import get_procedures_from_db
 from utils.sheets_connector import get_procedures_from_sheets
 import config
 
 # Import Anthropic for Claude API
+CLAUDE_AVAILABLE = False
 try:
     from anthropic import Anthropic
-    CLAUDE_AVAILABLE = bool(config.CLAUDE_API_KEY)
+    CLAUDE_AVAILABLE = bool(config.ANTHROPIC_API_KEY)
+    if CLAUDE_AVAILABLE:
+        print("✅ Claude API ready (fully automated mode)")
+    else:
+        print("⚠️  No ANTHROPIC_API_KEY set — running in manual mode")
 except ImportError:
-    CLAUDE_AVAILABLE = False
     print("⚠️  Anthropic package not installed. Run: pip install anthropic")
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(16)  # Secure session key
+app.secret_key = config.SECRET_KEY
 
-# Configuration from config.py
-GOOGLE_SHEETS_URL = config.GOOGLE_SHEETS_URL
-ADMIN_USERNAME = config.ADMIN_USERNAME
-ADMIN_PASSWORD = config.ADMIN_PASSWORD
+# ── Auth ─────────────────────────────────────────────────────
 
-# Login required decorator
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -42,88 +43,106 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
 @app.route('/')
 def index():
     if 'logged_in' in session:
         return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
 
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+
+        if username == config.ADMIN_USERNAME and password == config.ADMIN_PASSWORD:
             session['logged_in'] = True
             session['username'] = username
             return redirect(url_for('dashboard'))
         else:
             return render_template('login.html', error="Invalid credentials")
-    
+
     return render_template('login.html')
+
 
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('login'))
 
+
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    return render_template('dashboard.html', username=session.get('username'))
+    return render_template('dashboard.html',
+                           username=session.get('username'),
+                           claude_available=CLAUDE_AVAILABLE)
+
+# ── Profile Generation ───────────────────────────────────────
+
+def load_procedures():
+    """Load procedures from Postgres DB first, fall back to Google Sheets"""
+    if config.DATABASE_URL:
+        procedures = get_procedures_from_db()
+        if procedures:
+            return procedures
+        print("⚠️  DB returned empty, falling back to Google Sheets")
+
+    if config.GOOGLE_SHEETS_URL:
+        return get_procedures_from_sheets(config.GOOGLE_SHEETS_URL)
+
+    print("⚠️  No procedure source available")
+    return []
+
 
 @app.route('/generate', methods=['POST'])
 @login_required
 def generate_profile():
     try:
-        doctor_url = request.json.get('doctor_url')
-        
+        doctor_url = request.json.get('doctor_url', '').strip()
+
         if not doctor_url:
             return jsonify({'error': 'Doctor URL is required'}), 400
-        
+
         # Step 1: Scrape doctor webpage
         doctor_data = scrape_doctor_webpage(doctor_url)
-        
         if not doctor_data:
-            return jsonify({'error': 'Could not extract data from URL'}), 400
-        
-        # Step 2: Get procedures from Google Sheets
-        procedures_db = get_procedures_from_sheets(GOOGLE_SHEETS_URL)
-        
+            return jsonify({'error': 'Could not extract data from that URL. Check the link and try again.'}), 400
+
+        # Step 2: Load procedures (DB first, then Sheets fallback)
+        procedures_db = load_procedures()
+
         # Step 3: Match doctor to procedures
         matched_procedures = match_procedures(doctor_data, procedures_db)
-        
+
         # Step 4: Generate Claude prompt
         prompt = generate_claude_prompt(doctor_data, matched_procedures)
-        
-        # Step 5: FULL AUTOMATION - Call Claude API directly! 🚀
-        if CLAUDE_AVAILABLE and config.CLAUDE_API_KEY:
+
+        # Step 5: If Claude API is available, generate automatically
+        if CLAUDE_AVAILABLE:
             try:
-                client = Anthropic(api_key=config.CLAUDE_API_KEY)
-                
+                client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
                 message = client.messages.create(
                     model="claude-sonnet-4-20250514",
                     max_tokens=4000,
-                    messages=[
-                        {"role": "user", "content": prompt}
-                    ]
+                    messages=[{"role": "user", "content": prompt}]
                 )
-                
                 claude_response = message.content[0].text
-                
-                # Return automated response!
+
                 return jsonify({
                     'success': True,
                     'automated': True,
                     'doctor_data': doctor_data,
                     'matched_procedures': matched_procedures,
                     'claude_response': claude_response,
-                    'claude_prompt': prompt  # For reference
+                    'claude_prompt': prompt
                 })
-                
+
             except Exception as api_error:
-                # If API fails, fall back to manual mode
+                print(f"[Claude API Error] {api_error}")
+                # Fall back to manual mode
                 return jsonify({
                     'success': True,
                     'automated': False,
@@ -133,7 +152,7 @@ def generate_profile():
                     'api_error': str(api_error)
                 })
         else:
-            # Manual mode (no API key)
+            # Manual mode
             return jsonify({
                 'success': True,
                 'automated': False,
@@ -141,9 +160,12 @@ def generate_profile():
                 'matched_procedures': matched_procedures,
                 'claude_prompt': prompt
             })
-        
+
     except Exception as e:
+        print(f"[Generate Error] {e}")
         return jsonify({'error': str(e)}), 500
+
+# ── Document Creation ────────────────────────────────────────
 
 @app.route('/create-document', methods=['POST'])
 @login_required
@@ -151,21 +173,38 @@ def create_document():
     try:
         doctor_data = request.json.get('doctor_data')
         claude_response = request.json.get('claude_response')
-        
-        # Generate Word document
+
+        if not claude_response:
+            return jsonify({'error': 'No profile content to create document from'}), 400
+
         doc_path = create_word_document(doctor_data, claude_response)
-        
+
+        doctor_name = (doctor_data or {}).get('name', 'doctor')
+        safe_name = "".join(c for c in doctor_name if c.isalnum() or c in ' -_').strip().replace(' ', '_')
+        filename = f"{safe_name}_profile_{datetime.now().strftime('%Y%m%d')}.docx"
+
         return send_file(
             doc_path,
             as_attachment=True,
-            download_name=f"doctor_profile_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+            download_name=filename
         )
-        
+
     except Exception as e:
+        print(f"[Document Error] {e}")
         return jsonify({'error': str(e)}), 500
 
+# ── Health Check ─────────────────────────────────────────────
+
+@app.route('/health')
+def health():
+    return jsonify({
+        'status': 'ok',
+        'claude_available': CLAUDE_AVAILABLE,
+        'db_connected': bool(config.DATABASE_URL),
+        'timestamp': datetime.now().isoformat()
+    })
+
+# ── Run ──────────────────────────────────────────────────────
+
 if __name__ == '__main__':
-    # For development
-    app.run(debug=True, host='0.0.0.0', port=5000)
-    
-    # For production, use: gunicorn app:app
+    app.run(debug=config.DEBUG, host='0.0.0.0', port=5000)

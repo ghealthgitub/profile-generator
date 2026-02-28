@@ -3,67 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Ginger Universe</title>
+    <title>Login — Ginger Universe</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0B2545 0%, #13315C 60%, #0EA5A0 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 20px;
         }
-        .login-container {
+        .login-card {
             background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 44px 36px;
+            border-radius: 16px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.35);
             width: 100%;
             max-width: 400px;
         }
-        .logo { text-align: center; margin-bottom: 30px; }
-        .logo-icon { font-size: 60px; margin-bottom: 10px; }
-        h1 { color: #FF6B35; font-size: 28px; margin-bottom: 10px; }
-        .tagline { color: #666; font-size: 14px; margin-bottom: 30px; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; color: #333; font-weight: 600; margin-bottom: 8px; }
-        input[type="text"], input[type="password"] {
+        .logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .logo-icon {
+            width: 64px; height: 64px;
+            background: #F26522;
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 34px;
+            margin-bottom: 16px;
+        }
+        .logo h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 26px;
+            color: #0B2545;
+            margin-bottom: 4px;
+        }
+        .logo .tagline {
+            font-size: 14px;
+            color: #6B7280;
+            font-weight: 400;
+        }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+        input {
             width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e0e0e0;
+            padding: 12px 14px;
+            border: 2px solid #E5E7EB;
             border-radius: 8px;
             font-size: 15px;
+            font-family: inherit;
+            transition: border-color 0.2s;
         }
-        input:focus { outline: none; border-color: #FF6B35; }
+        input:focus {
+            outline: none;
+            border-color: #0EA5A0;
+            box-shadow: 0 0 0 3px rgba(14,165,160,0.1);
+        }
+        .error {
+            background: #FEE2E2;
+            color: #991B1B;
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 18px;
+            font-size: 14px;
+            border: 1px solid #FECACA;
+        }
         button {
             width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
+            padding: 13px;
+            background: #F26522;
             color: white;
             border: none;
             border-radius: 8px;
             font-size: 16px;
             font-weight: 600;
+            font-family: inherit;
             cursor: pointer;
+            transition: all 0.2s;
         }
-        button:hover { transform: translateY(-2px); }
-        .error { background: #ffe6e6; color: #d00; padding: 12px; border-radius: 8px; margin-bottom: 20px; }
-        .footer { text-align: center; margin-top: 20px; color: #999; font-size: 13px; }
+        button:hover {
+            background: #D9541A;
+            transform: translateY(-1px);
+        }
+        .footer {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 12px;
+            color: #9CA3AF;
+        }
     </style>
 </head>
 <body>
-    <div class="login-container">
+    <div class="login-card">
         <div class="logo">
             <div class="logo-icon">🫚</div>
             <h1>Ginger Universe</h1>
             <div class="tagline">Doctor Profile Generator</div>
         </div>
-        {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+
         <form method="POST">
             <div class="form-group">
                 <label for="username">Username</label>
-                <input type="text" id="username" name="username" required autofocus>
+                <input type="text" id="username" name="username" required autofocus
+                       placeholder="admin@ginger.healthcare">
             </div>
             <div class="form-group">
                 <label for="password">Password</label>
@@ -71,6 +131,7 @@
             </div>
             <button type="submit">Login</button>
         </form>
+
         <div class="footer">© 2026 ginger.healthcare</div>
     </div>
 </body>
