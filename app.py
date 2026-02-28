@@ -394,26 +394,32 @@ AVAILABLE DESTINATIONS (countries):
 {', '.join(dest_names)}
 
 DOCTOR PROFILE:
-{profile_text[:3000]}
+{profile_text[:4000]}
 
 {('ADDITIONAL SCRAPED DATA:' + scraped_text[:2000]) if scraped_text else ''}
 
 Return JSON with these exact keys:
 {{
-  "name": "Doctor full name without Dr. prefix",
+  "name": "Doctor full name without Dr./Prof. prefix",
   "title": "Dr." or "Prof." etc,
   "specialty": "Best matching specialty from the list above (exact name)",
   "hospital": "Best matching hospital from the list above (exact name)",
   "destination": "Best matching destination from the list above (exact name)",
   "city": "City name",
   "experience_years": number or null,
-  "qualifications": ["MBBS", "MS", "MCh", etc],
+  "qualifications": ["MBBS", "MS", "MCh", "FRCS", etc],
   "languages": ["English", "Hindi", etc],
   "description": "One-line summary under 150 chars for listing cards",
-  "suggested_treatments": ["treatment names mentioned in the profile"]
+  "suggested_treatments": ["ALL treatment/procedure names mentioned in the profile — be comprehensive, list every single one"]
 }}
 
-IMPORTANT: For specialty, hospital, and destination — ONLY use names from the lists provided above. If no exact match, pick the closest one. Return ONLY the JSON object."""
+CRITICAL INSTRUCTIONS:
+1. QUALIFICATIONS: Look very carefully for degree abbreviations like MBBS, MD, MS, MCh, DNB, DM, FRCS, FACS, FIMSA, MRCS, MNAMS, PhD, Diploma, Fellowship etc. These appear in the profile text, in scraped data, in credential lists, after the doctor's name, or in education sections. Extract ALL of them. Do NOT leave this empty if any degrees are mentioned anywhere.
+2. EXPERIENCE: If experience_years is not directly stated, calculate it: find the year of MBBS/MD/MS graduation or "practicing since" year. Subtract from 2026. For example, MBBS 1985 → 2026-1985 = 41 years. If only a career start year is mentioned (e.g. "career spanning 3 decades since 1990"), calculate from that.
+3. TREATMENTS: List EVERY procedure, surgery, and treatment mentioned anywhere in the profile. Be exhaustive — include all specific procedures (e.g. "total knee replacement", "ACL reconstruction", "arthroscopy", "robotic surgery" etc).
+4. For specialty, hospital, and destination — ONLY use names from the lists provided above. Pick the closest match.
+
+Return ONLY the JSON object."""
 
     try:
         client = Anthropic(api_key=config.ANTHROPIC_API_KEY)

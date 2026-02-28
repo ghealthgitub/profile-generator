@@ -130,8 +130,10 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--gray-100);color
         </div>
 
         <div class="form-grid">
-            <div class="form-row"><label>Qualifications</label><input type="text" class="form-input" id="pushQualifications" placeholder="MBBS, MS, MCh"><div class="hint">Comma-separated</div></div>
-            <div class="form-row"><label>Languages</label><input type="text" class="form-input" id="pushLanguages" placeholder="English, Hindi"><div class="hint">Comma-separated</div></div>
+            <div class="form-row"><label>Qualifications</label><input type="text" class="form-input" id="pushQualifications" placeholder="MBBS, MS, MCh, FRCS"><div class="hint">Comma-separated</div></div>
+            <div class="form-row"><label>Languages <span id="langCount" style="color:var(--gray-400);font-weight:400"></span></label>
+                <div id="languageChecklist" class="treatment-checklist" style="max-height:140px"></div>
+            </div>
         </div>
 
         <div class="form-row"><label>Short Description</label><input type="text" class="form-input" id="pushDescription" placeholder="One-line summary for listing cards"></div>
@@ -158,6 +160,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--gray-100);color
 const profileId = '{{ profile_id }}';
 const adminUrl = '{{ admin_url }}';
 const CITY_LIST = ['Delhi NCR','Mumbai','Bengaluru','Chennai','Hyderabad','Kolkata','Pune','Ahmedabad','Guwahati','Gurugram','Noida','Jaipur','Lucknow','Chandigarh','Kochi','Thiruvananthapuram','Coimbatore','Nagpur','Visakhapatnam','Bhubaneswar','Indore','Mangalore'];
+const LANG_LIST = ['English','Hindi','Tamil','Telugu','Kannada','Malayalam','Bengali','Marathi','Gujarati','Punjabi','Urdu','Odia','Assamese','Arabic','Turkish','Thai','French','German','Spanish','Russian','Mandarin','Japanese','Korean'];
 
 let pushData = null, pushMode = 'new', selectedDoctorId = null, allTreatmentsForSpec = [], profileContent = '';
 
@@ -176,6 +179,7 @@ async function init() {
     populateSelect('pushHospital', pushData.hospitals, 'name', 'id', h => h.name+(h.city?' — '+h.city:''));
     populateSelect('pushSpecialty', pushData.specialties, 'name', 'id', s => (s.icon||'')+' '+s.name);
     populateCitySelect();
+    renderLanguageChecklist();
 
     // AI auto-extract
     if (profileContent) {
@@ -194,7 +198,7 @@ async function init() {
                 if (ext.city) setCityValue(ext.city); else if (ext.hospital_city) setCityValue(ext.hospital_city);
                 if (ext.experience_years) document.getElementById('pushExperience').value = ext.experience_years;
                 if (ext.qualifications) document.getElementById('pushQualifications').value = ext.qualifications.join(', ');
-                if (ext.languages) document.getElementById('pushLanguages').value = ext.languages.join(', ');
+                if (ext.languages) checkLanguages(ext.languages);
                 if (ext.description) document.getElementById('pushDescription').value = ext.description;
                 document.getElementById('aiNote').classList.remove('hidden');
             }
@@ -256,6 +260,30 @@ function filterTreatmentChecklist(){document.querySelectorAll('#treatmentCheckli
 function autoCheckTreatments(names){if(!names||!names.length)return;const ln=names.map(n=>n.toLowerCase());allTreatmentsForSpec.forEach(t=>{t._checked=ln.some(s=>t.name.toLowerCase().includes(s)||s.includes(t.name.toLowerCase()))});renderTreatmentChecklist();updateTxCount()}
 function updateTxCount(){const c=document.querySelectorAll('#treatmentChecklist input:checked').length,a=allTreatmentsForSpec.length;document.getElementById('txCount').textContent=a?'('+c+'/'+a+' selected)':''}
 
+// ── Languages checklist ──
+function renderLanguageChecklist() {
+    const c = document.getElementById('languageChecklist');
+    c.innerHTML = LANG_LIST.map(l => '<label><input type="checkbox" value="'+l+'" onchange="updateLangCount()"> '+l+'</label>').join('');
+}
+function checkLanguages(langs) {
+    if (!langs || !langs.length) return;
+    const lower = langs.map(l => l.toLowerCase());
+    document.querySelectorAll('#languageChecklist input').forEach(cb => {
+        if (lower.includes(cb.value.toLowerCase())) cb.checked = true;
+    });
+    // Add any custom languages not in the list
+    langs.forEach(l => {
+        if (!LANG_LIST.some(x => x.toLowerCase() === l.toLowerCase())) {
+            const label = document.createElement('label');
+            label.innerHTML = '<input type="checkbox" value="'+l+'" onchange="updateLangCount()" checked> '+l;
+            document.getElementById('languageChecklist').appendChild(label);
+        }
+    });
+    updateLangCount();
+}
+function getSelectedLanguages() { return Array.from(document.querySelectorAll('#languageChecklist input:checked')).map(cb => cb.value); }
+function updateLangCount() { const c = document.querySelectorAll('#languageChecklist input:checked').length; document.getElementById('langCount').textContent = c ? '('+c+' selected)' : ''; }
+
 // ── Mode & Search ──
 function setPushMode(m){pushMode=m;selectedDoctorId=null;document.querySelectorAll('.mode-tab').forEach((t,i)=>t.classList.toggle('active',(m==='new'&&i===0)||(m==='update'&&i===1)));document.getElementById('updateSection').classList.toggle('hidden',m==='new')}
 let st=null;
@@ -281,7 +309,7 @@ async function executePush(){
         country:document.getElementById('pushDestination').selectedOptions[0]?.textContent.trim()||'',
         experience_years:parseInt(document.getElementById('pushExperience').value)||null,
         qualifications:document.getElementById('pushQualifications').value.split(',').map(s=>s.trim()).filter(Boolean),
-        languages:document.getElementById('pushLanguages').value.split(',').map(s=>s.trim()).filter(Boolean),
+        languages:getSelectedLanguages(),
         description:document.getElementById('pushDescription').value.trim(),
         long_description:profileContent,
         treatment_ids:txIds,
