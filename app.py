@@ -17,7 +17,9 @@ from utils.db_connector import (
     get_treatment_dictionary, get_specialties_list, get_hospitals_list,
     get_active_prompt, get_all_prompts, save_prompt,
     save_profile, update_profile_content, get_recent_profiles,
-    get_profile_by_id, get_profile_stats
+    get_profile_by_id, get_profile_stats,
+    get_destinations_list, get_treatments_for_specialty,
+    push_doctor_to_admin, search_existing_doctors
 )
 
 # Claude API
@@ -313,6 +315,55 @@ def api_db_stats():
         'treatments': len(get_treatment_dictionary()),
         'hospitals': len(get_hospitals_list()),
     })
+
+
+# ═══════════════════════════════════════════════════════════════
+# PUSH TO ADMIN
+# ═══════════════════════════════════════════════════════════════
+
+@app.route('/api/push-data')
+@login_required
+def push_data():
+    """Returns dropdowns data for the Push to Admin modal"""
+    specialties = get_specialties_list()
+    hospitals = get_hospitals_list()
+    destinations = get_destinations_list()
+    return jsonify({
+        'specialties': specialties,
+        'hospitals': hospitals,
+        'destinations': destinations
+    })
+
+
+@app.route('/api/push-treatments/<int:specialty_id>')
+@login_required
+def push_treatments(specialty_id):
+    """Returns treatments for a given specialty (for the treatments checklist)"""
+    treatments = get_treatments_for_specialty(specialty_id)
+    return jsonify(treatments)
+
+
+@app.route('/api/push-doctor', methods=['POST'])
+@login_required
+def push_doctor():
+    """Push a generated profile into the doctors table"""
+    try:
+        data = request.json
+        profile_id = data.pop('profile_id', None)
+        result = push_doctor_to_admin(data, profile_id, session['user']['email'])
+        return jsonify(result)
+    except Exception as e:
+        print(f"[Push Error] {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/search-doctors')
+@login_required
+def api_search_doctors():
+    """Search existing doctors for 'update existing' mode"""
+    q = request.args.get('q', '')
+    doctors = search_existing_doctors(q)
+    return jsonify(doctors)
 
 
 # ═══════════════════════════════════════════════════════════════

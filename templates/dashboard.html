@@ -142,9 +142,72 @@
 
         .hidden{display:none!important}
 
+        /* ── Push Modal ── */
+        .modal-overlay{
+            position:fixed;top:0;left:0;width:100%;height:100%;z-index:200;
+            background:rgba(11,37,69,.6);backdrop-filter:blur(4px);
+            display:flex;align-items:center;justify-content:center;
+        }
+        .modal{
+            background:white;border-radius:16px;width:95%;max-width:680px;
+            max-height:90vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.3);
+        }
+        .modal-header{
+            padding:20px 24px;border-bottom:1px solid #E5E7EB;display:flex;
+            justify-content:space-between;align-items:center;position:sticky;top:0;
+            background:white;border-radius:16px 16px 0 0;z-index:1;
+        }
+        .modal-header h2{font-family:'Playfair Display',serif;font-size:18px;color:#0B2545;margin:0}
+        .modal-close{width:32px;height:32px;border:none;background:#F3F4F6;border-radius:8px;font-size:18px;cursor:pointer;color:#6B7280}
+        .modal-close:hover{background:#E5E7EB}
+        .modal-body{padding:24px}
+        .modal-footer{padding:16px 24px;border-top:1px solid #E5E7EB;display:flex;gap:10px;justify-content:flex-end;position:sticky;bottom:0;background:white;border-radius:0 0 16px 16px}
+
+        .form-row{margin-bottom:16px}
+        .form-row label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:5px}
+        .form-row .hint{font-size:11px;color:#9CA3AF;margin-top:3px}
+        .form-select,.form-input{
+            width:100%;padding:10px 12px;border:2px solid #E5E7EB;border-radius:8px;
+            font-size:14px;font-family:inherit;transition:border-color .2s;
+        }
+        .form-select:focus,.form-input:focus{outline:none;border-color:#0EA5A0;box-shadow:0 0 0 3px rgba(14,165,160,.08)}
+        .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+        .form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+        .mode-tabs{display:flex;gap:4px;margin-bottom:20px;background:#F3F4F6;border-radius:8px;padding:4px}
+        .mode-tab{
+            flex:1;padding:8px;text-align:center;border-radius:6px;cursor:pointer;
+            font-size:13px;font-weight:600;color:#6B7280;transition:all .2s;border:none;background:transparent;font-family:inherit;
+        }
+        .mode-tab.active{background:white;color:#0B2545;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+
+        .treatment-checklist{
+            max-height:180px;overflow-y:auto;border:2px solid #E5E7EB;border-radius:8px;padding:10px;
+        }
+        .treatment-checklist label{
+            display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;font-weight:400;cursor:pointer;
+        }
+        .treatment-checklist input[type=checkbox]{accent-color:#0EA5A0;width:16px;height:16px}
+        .treatment-checklist .empty{color:#9CA3AF;font-size:13px;padding:8px 0}
+
+        .doctor-search-results{max-height:180px;overflow-y:auto;border:1px solid #E5E7EB;border-radius:8px;margin-top:8px}
+        .doctor-search-item{
+            padding:10px 14px;cursor:pointer;border-bottom:1px solid #F3F4F6;font-size:13px;transition:background .1s;
+        }
+        .doctor-search-item:hover{background:#F0FDFA}
+        .doctor-search-item .name{font-weight:600}
+        .doctor-search-item .meta{color:#9CA3AF;font-size:11px}
+        .doctor-search-item.selected{background:#D1FAE5;border-left:3px solid #0EA5A0}
+
+        .push-success{text-align:center;padding:24px}
+        .push-success .icon{font-size:48px;margin-bottom:12px}
+        .push-success h3{color:#065F46;font-size:18px;margin-bottom:8px}
+        .push-success a{color:#0EA5A0;text-decoration:none;font-weight:600}
+
         @media(max-width:768px){
             .stats-row{grid-template-columns:repeat(2,1fr)}
             .topbar-nav{display:none}
+            .form-grid,.form-grid-3{grid-template-columns:1fr}
         }
     </style>
 </head>
@@ -235,6 +298,7 @@
             </div>
             <div class="editor-toolbar">
                 <button class="btn btn-teal" onclick="downloadDoc()">⬇ Download .docx</button>
+                <button class="btn btn-navy" onclick="openPushModal()">🚀 Push to Admin</button>
                 <button class="btn btn-outline" onclick="copyProfile()">📋 Copy Text</button>
                 <button class="btn btn-outline" onclick="saveProfile()">💾 Save Changes</button>
                 <button class="btn btn-outline" onclick="regenerate()">🔄 Regenerate</button>
@@ -278,6 +342,135 @@
             </table>
         </div>
         {% endif %}
+    </div>
+
+    <!-- ═══ PUSH TO ADMIN MODAL ═══ -->
+    <div id="pushModal" class="modal-overlay hidden" onclick="if(event.target===this)closePushModal()">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>🚀 Push to Admin Dashboard</h2>
+                <button class="modal-close" onclick="closePushModal()">✕</button>
+            </div>
+
+            <!-- Success state -->
+            <div id="pushSuccess" class="push-success hidden">
+                <div class="icon">✅</div>
+                <h3 id="pushSuccessTitle">Doctor published!</h3>
+                <p style="color:#6B7280;margin-bottom:12px" id="pushSuccessMsg"></p>
+                <a id="pushSuccessLink" href="#" target="_blank">View on website →</a>
+            </div>
+
+            <!-- Form state -->
+            <div id="pushForm">
+                <div class="modal-body">
+                    <!-- Mode tabs -->
+                    <div class="mode-tabs">
+                        <button class="mode-tab active" onclick="setPushMode('new')">➕ Create New Doctor</button>
+                        <button class="mode-tab" onclick="setPushMode('update')">✏️ Update Existing</button>
+                    </div>
+
+                    <!-- Update existing: doctor search -->
+                    <div id="updateSection" class="hidden">
+                        <div class="form-row">
+                            <label>Search Existing Doctor</label>
+                            <input type="text" class="form-input" id="doctorSearch" placeholder="Type doctor name..." oninput="searchDoctors(this.value)">
+                            <div id="doctorSearchResults" class="doctor-search-results hidden"></div>
+                        </div>
+                    </div>
+
+                    <!-- Doctor Info -->
+                    <div class="form-row">
+                        <label>Doctor Name *</label>
+                        <div class="form-grid">
+                            <select class="form-select" id="pushTitle" style="max-width:100px">
+                                <option value="Dr.">Dr.</option>
+                                <option value="Prof.">Prof.</option>
+                                <option value="Mr.">Mr.</option>
+                                <option value="Ms.">Ms.</option>
+                            </select>
+                            <input type="text" class="form-input" id="pushName" placeholder="Full name">
+                        </div>
+                    </div>
+
+                    <div class="form-grid-3">
+                        <div class="form-row">
+                            <label>Destination *</label>
+                            <select class="form-select" id="pushDestination" onchange="onDestinationChange()">
+                                <option value="">Select country...</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <label>Hospital</label>
+                            <select class="form-select" id="pushHospital">
+                                <option value="">Select hospital...</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <label>Specialty *</label>
+                            <select class="form-select" id="pushSpecialty" onchange="onSpecialtyChange()">
+                                <option value="">Select specialty...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-row">
+                            <label>City</label>
+                            <input type="text" class="form-input" id="pushCity" placeholder="e.g. Gurugram">
+                        </div>
+                        <div class="form-row">
+                            <label>Experience (years)</label>
+                            <input type="number" class="form-input" id="pushExperience" placeholder="e.g. 25">
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-row">
+                            <label>Qualifications</label>
+                            <input type="text" class="form-input" id="pushQualifications" placeholder="MBBS, MS, MCh (comma-separated)">
+                            <div class="hint">Comma-separated list</div>
+                        </div>
+                        <div class="form-row">
+                            <label>Languages</label>
+                            <input type="text" class="form-input" id="pushLanguages" placeholder="English, Hindi (comma-separated)">
+                            <div class="hint">Comma-separated list</div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <label>Short Description</label>
+                        <input type="text" class="form-input" id="pushDescription" placeholder="One-line summary (shown in listing cards)">
+                    </div>
+
+                    <!-- Treatments checklist -->
+                    <div class="form-row">
+                        <label>Link Treatments (from selected specialty)</label>
+                        <div id="treatmentChecklist" class="treatment-checklist">
+                            <div class="empty">Select a specialty first to see available treatments</div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-row">
+                            <label>Meta Title</label>
+                            <input type="text" class="form-input" id="pushMetaTitle" placeholder="SEO title (auto-generated if empty)">
+                        </div>
+                        <div class="form-row">
+                            <label>Publish Status</label>
+                            <select class="form-select" id="pushStatus">
+                                <option value="draft">Draft (review in admin first)</option>
+                                <option value="published">Published (live immediately)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-outline" onclick="closePushModal()">Cancel</button>
+                    <button class="btn btn-navy" id="pushBtn" onclick="executePush()">🚀 Push to Admin</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -497,6 +690,222 @@
         document.addEventListener('keydown', e => {
             if (e.key === 'Enter' && e.target.classList.contains('url-input')) generateProfile();
         });
+
+        // ══════════════════════════════════════════════
+        // PUSH TO ADMIN
+        // ══════════════════════════════════════════════
+        let pushData = null;     // { specialties, hospitals, destinations }
+        let pushMode = 'new';    // 'new' or 'update'
+        let selectedDoctorId = null;
+
+        async function openPushModal() {
+            const content = document.getElementById('profileEditor').value;
+            if (!content) return showStatus('Generate a profile first', 'error');
+
+            // Show modal
+            document.getElementById('pushModal').classList.remove('hidden');
+            document.getElementById('pushSuccess').classList.add('hidden');
+            document.getElementById('pushForm').classList.remove('hidden');
+
+            // Pre-fill name
+            document.getElementById('pushName').value = currentDoctorName || '';
+
+            // Load dropdown data if not cached
+            if (!pushData) {
+                try {
+                    const res = await fetch('/api/push-data');
+                    pushData = await res.json();
+                } catch(e) {
+                    showStatus('Could not load dropdown data: ' + e.message, 'error');
+                    closePushModal();
+                    return;
+                }
+            }
+
+            // Populate dropdowns
+            populateSelect('pushDestination', pushData.destinations, 'name', 'id', d => (d.flag || '') + ' ' + d.name);
+            populateSelect('pushSpecialty', pushData.specialties, 'name', 'id', s => (s.icon || '') + ' ' + s.name);
+            populateSelect('pushHospital', pushData.hospitals, 'name', 'id', h => h.name + (h.city ? ' — ' + h.city : ''));
+        }
+
+        function closePushModal() {
+            document.getElementById('pushModal').classList.add('hidden');
+        }
+
+        function setPushMode(mode) {
+            pushMode = mode;
+            selectedDoctorId = null;
+            document.querySelectorAll('.mode-tab').forEach((t,i) => {
+                t.classList.toggle('active', (mode === 'new' && i === 0) || (mode === 'update' && i === 1));
+            });
+            document.getElementById('updateSection').classList.toggle('hidden', mode === 'new');
+        }
+
+        function populateSelect(id, items, labelKey, valueKey, formatter) {
+            const sel = document.getElementById(id);
+            const current = sel.value;
+            // Keep first option
+            sel.innerHTML = sel.options[0].outerHTML;
+            items.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item[valueKey];
+                opt.textContent = formatter ? formatter(item) : item[labelKey];
+                sel.appendChild(opt);
+            });
+            if (current) sel.value = current;
+        }
+
+        function onDestinationChange() {
+            const destId = document.getElementById('pushDestination').value;
+            if (!destId || !pushData) return;
+
+            // Filter hospitals by destination
+            const dest = pushData.destinations.find(d => d.id == destId);
+            if (dest) {
+                const filtered = pushData.hospitals.filter(h =>
+                    (h.destination_name || '').toLowerCase() === dest.name.toLowerCase() ||
+                    (h.country || '').toLowerCase() === dest.name.toLowerCase()
+                );
+                populateSelect('pushHospital', filtered.length ? filtered : pushData.hospitals,
+                    'name', 'id', h => h.name + (h.city ? ' — ' + h.city : ''));
+            }
+        }
+
+        async function onSpecialtyChange() {
+            const specId = document.getElementById('pushSpecialty').value;
+            const container = document.getElementById('treatmentChecklist');
+            if (!specId) {
+                container.innerHTML = '<div class="empty">Select a specialty first</div>';
+                return;
+            }
+
+            container.innerHTML = '<div class="empty">Loading treatments...</div>';
+            try {
+                const res = await fetch('/api/push-treatments/' + specId);
+                const treatments = await res.json();
+                if (!treatments.length) {
+                    container.innerHTML = '<div class="empty">No treatments found for this specialty</div>';
+                    return;
+                }
+                container.innerHTML = treatments.map(t =>
+                    '<label><input type="checkbox" value="' + t.id + '" checked> ' + t.name + '</label>'
+                ).join('');
+            } catch(e) {
+                container.innerHTML = '<div class="empty">Error loading treatments</div>';
+            }
+        }
+
+        // Doctor search (update mode)
+        let searchTimer = null;
+        function searchDoctors(query) {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(async () => {
+                if (query.length < 2) {
+                    document.getElementById('doctorSearchResults').classList.add('hidden');
+                    return;
+                }
+                try {
+                    const res = await fetch('/api/search-doctors?q=' + encodeURIComponent(query));
+                    const doctors = await res.json();
+                    const container = document.getElementById('doctorSearchResults');
+                    if (!doctors.length) {
+                        container.innerHTML = '<div class="doctor-search-item"><span class="meta">No doctors found</span></div>';
+                    } else {
+                        container.innerHTML = doctors.map(d =>
+                            '<div class="doctor-search-item" onclick="selectExistingDoctor(' + d.id + ',\'' +
+                            (d.name||'').replace(/'/g,"\\'") + '\')">' +
+                            '<div class="name">' + d.name + '</div>' +
+                            '<div class="meta">' + (d.specialty||'') + ' · ' + (d.city||'') + ', ' + (d.country||'') +
+                            ' · ' + d.status + '</div></div>'
+                        ).join('');
+                    }
+                    container.classList.remove('hidden');
+                } catch(e) { console.error(e); }
+            }, 300);
+        }
+
+        function selectExistingDoctor(id, name) {
+            selectedDoctorId = id;
+            document.getElementById('pushName').value = name;
+            document.getElementById('doctorSearchResults').querySelectorAll('.doctor-search-item').forEach(el => {
+                el.classList.remove('selected');
+            });
+            // Visual feedback
+            document.getElementById('doctorSearch').value = name;
+            document.getElementById('doctorSearchResults').classList.add('hidden');
+        }
+
+        async function executePush() {
+            const btn = document.getElementById('pushBtn');
+            btn.disabled = true;
+            btn.textContent = 'Pushing...';
+
+            const name = document.getElementById('pushName').value.trim();
+            if (!name) { btn.disabled = false; btn.textContent = '🚀 Push to Admin'; alert('Doctor name is required'); return; }
+
+            // Gather checked treatment IDs
+            const treatmentIds = Array.from(
+                document.querySelectorAll('#treatmentChecklist input[type=checkbox]:checked')
+            ).map(cb => parseInt(cb.value));
+
+            // Build the long_description from the editor content
+            const profileContent = document.getElementById('profileEditor').value;
+
+            const payload = {
+                profile_id: currentProfileId,
+                existing_doctor_id: pushMode === 'update' ? selectedDoctorId : null,
+                name: name,
+                title: document.getElementById('pushTitle').value,
+                destination_id: parseInt(document.getElementById('pushDestination').value) || null,
+                hospital_id: parseInt(document.getElementById('pushHospital').value) || null,
+                specialty_id: parseInt(document.getElementById('pushSpecialty').value) || null,
+                city: document.getElementById('pushCity').value.trim(),
+                country: document.getElementById('pushDestination').selectedOptions[0]?.textContent.trim() || '',
+                experience_years: parseInt(document.getElementById('pushExperience').value) || null,
+                qualifications: document.getElementById('pushQualifications').value.split(',').map(s => s.trim()).filter(Boolean),
+                languages: document.getElementById('pushLanguages').value.split(',').map(s => s.trim()).filter(Boolean),
+                description: document.getElementById('pushDescription').value.trim(),
+                long_description: profileContent,
+                treatment_ids: treatmentIds,
+                meta_title: document.getElementById('pushMetaTitle').value.trim() || ('Dr. ' + name + ' — Ginger Healthcare'),
+                meta_description: document.getElementById('pushDescription').value.trim().substring(0, 160),
+                status: document.getElementById('pushStatus').value
+            };
+
+            try {
+                const res = await fetch('/api/push-doctor', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    // Show success state
+                    document.getElementById('pushForm').classList.add('hidden');
+                    document.getElementById('pushSuccess').classList.remove('hidden');
+                    document.getElementById('pushSuccessTitle').textContent =
+                        result.is_update ? 'Doctor updated!' : 'Doctor created!';
+                    document.getElementById('pushSuccessMsg').textContent =
+                        'ID: #' + result.doctor_id + ' · Slug: ' + result.slug +
+                        ' · Status: ' + payload.status;
+                    if (result.public_url) {
+                        const link = document.getElementById('pushSuccessLink');
+                        link.href = 'https://ginger.healthcare' + result.public_url;
+                        link.textContent = 'View on website →';
+                        link.classList.remove('hidden');
+                    }
+                    showStatus('🚀 Doctor ' + (result.is_update ? 'updated' : 'pushed') + ' to admin! ID: #' + result.doctor_id, 'success');
+                } else {
+                    alert('Push failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch(e) {
+                alert('Error: ' + e.message);
+            }
+
+            btn.disabled = false;
+            btn.textContent = '🚀 Push to Admin';
+        }
     </script>
 </body>
 </html>

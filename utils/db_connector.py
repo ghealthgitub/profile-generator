@@ -366,6 +366,251 @@ def get_profile_stats():
         conn.close()
 
 
+# ── Push to Admin (doctors table) ─────────────────────────────
+
+def get_destinations_list():
+    """Returns all published destinations for the push modal"""
+    conn = get_conn()
+    if not conn:
+        return []
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, name, slug, flag
+                FROM destinations
+                WHERE status = 'published'
+                ORDER BY display_order, name
+            """)
+            return [dict(r) for r in cur.fetchall()]
+    except Exception as e:
+        print(f"[DB Error] {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def get_treatments_for_specialty(specialty_id):
+    """Returns treatments belonging to a specialty (for junction table linking)"""
+    conn = get_conn()
+    if not conn:
+        return []
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, name, slug
+                FROM treatments
+                WHERE specialty_id = %s AND status = 'published'
+                ORDER BY name
+            """, [specialty_id])
+            return [dict(r) for r in cur.fetchall()]
+    except Exception as e:
+        print(f"[DB Error] {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def check_doctor_slug_exists(slug):
+    """Check if a doctor slug already exists"""
+    conn = get_conn()
+    if not conn:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM doctors WHERE slug = %s", [slug])
+            return cur.fetchone() is not None
+    except Exception as e:
+        print(f"[DB Error] {e}")
+        return False
+    finally:
+        conn.close()
+
+
+def generate_doctor_slug(name):
+    """Generate a unique slug for a doctor"""
+    import re
+    base = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+    slug = base
+    counter = 1
+    while check_doctor_slug_exists(slug):
+        slug = f"{base}-{counter}"
+        counter += 1
+    return slug
+
+
+def push_doctor_to_admin(data, profile_id=None, user_email=''):
+    """
+    Inserts or updates a doctor record in the main doctors table.
+    Also links treatments via doctor_treatments junction table.
+
+    data keys:
+        name, title, specialty_id, hospital_id, destination_id,
+        experience_years, qualifications[], languages[],
+        description (short), long_description (full profile),
+        city, country, treatments[] (list of treatment IDs),
+        meta_title, meta_description, status
+    """
+    conn = get_conn()
+    if not conn:
+        return {'success': False, 'error': 'Database not connected'}
+
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            name = data.get('name', '').strip()
+            if not name:
+                return {'success': False, 'error': 'Doctor name is required'}
+
+            slug = data.get('slug') or generate_doctor_slug(name)
+            title = data.get('title', 'Dr.')
+            specialty_id = data.get('specialty_id')
+            hospital_id = data.get('hospital_id')
+            destination_id = data.get('destination_id')
+            experience_years = data.get('experience_years')
+            qualifications = data.get('qualifications', [])
+            languages = data.get('languages', [])
+            description = data.get('description', '')
+            long_description = data.get('long_description', '')
+            city = data.get('city', '')
+            country = data.get('country', '')
+            meta_title = data.get('meta_title', '')
+            meta_description = data.get('meta_description', '')
+            status = data.get('status', 'draft')
+            treatment_ids = data.get('treatment_ids', [])
+
+            # Get legacy text values for backward compat columns
+            specialty_text = ''
+            if specialty_id:
+                cur.execute("SELECT name FROM specialties WHERE id = %s", [specialty_id])
+                row = cur.fetchone()
+                if row:
+                    specialty_text = row['name']
+
+            # Check if doctor already exists (by slug)
+            existing_id = data.get('existing_doctor_id')
+            if existing_id:
+                # UPDATE existing doctor
+                cur.execute("""
+                    UPDATE doctors SET
+                        name=%s, title=%s, slug=%s,
+                        specialty=%s, specialty_id=%s,
+                        hospital_id=%s, destination_id=%s,
+                        country=%s, city=%s,
+                        experience_years=%s, qualifications=%s,
+                        description=%s, long_description=%s,
+                        languages=%s,
+                        meta_title=%s, meta_description=%s,
+                        status=%s, updated_at=NOW()
+                    WHERE id=%s
+                    RETURNING id
+                """, [
+                    name, title, slug,
+                    specialty_text, specialty_id,
+                    hospital_id, destination_id,
+                    country, city,
+                    experience_years, qualifications,
+                    description, long_description,
+                    languages,
+                    meta_title, meta_description,
+                    status, existing_id
+                ])
+                doctor_id = existing_id
+            else:
+                # INSERT new doctor
+                cur.execute("""
+                    INSERT INTO doctors
+                        (name, title, slug, specialty, specialty_id,
+                         hospital_id, destination_id, country, city,
+                         experience_years, qualifications,
+                         description, long_description, languages,
+                         meta_title, meta_description, status)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    RETURNING id
+                """, [
+                    name, title, slug, specialty_text, specialty_id,
+                    hospital_id, destination_id, country, city,
+                    experience_years, qualifications,
+                    description, long_description, languages,
+                    meta_title, meta_description, status
+                ])
+                doctor_id = cur.fetchone()['id']
+
+            # Link treatments via junction table
+            if treatment_ids and doctor_id:
+                # Clear existing links
+                cur.execute("DELETE FROM doctor_treatments WHERE doctor_id = %s", [doctor_id])
+                for tid in treatment_ids:
+                    try:
+                        cur.execute("""
+                            INSERT INTO doctor_treatments (doctor_id, treatment_id)
+                            VALUES (%s, %s) ON CONFLICT DO NOTHING
+                        """, [doctor_id, tid])
+                    except Exception:
+                        pass  # Skip if junction insert fails
+
+            # Update generator_profiles status to 'pushed'
+            if profile_id:
+                cur.execute("""
+                    UPDATE generator_profiles
+                    SET status='pushed', updated_at=NOW()
+                    WHERE id=%s
+                """, [profile_id])
+
+            conn.commit()
+
+            # Build the doctor's public URL
+            dest_slug = ''
+            if destination_id:
+                cur.execute("SELECT slug FROM destinations WHERE id = %s", [destination_id])
+                dest_row = cur.fetchone()
+                if dest_row:
+                    dest_slug = dest_row['slug']
+
+            public_url = f"/destinations/{dest_slug}/doctors/{slug}/" if dest_slug else ''
+
+            return {
+                'success': True,
+                'doctor_id': doctor_id,
+                'slug': slug,
+                'public_url': public_url,
+                'is_update': bool(existing_id)
+            }
+
+    except Exception as e:
+        print(f"[DB Error] push_doctor_to_admin: {e}")
+        conn.rollback()
+        return {'success': False, 'error': str(e)}
+    finally:
+        conn.close()
+
+
+def search_existing_doctors(query=''):
+    """Search existing doctors for the 'update existing' feature"""
+    conn = get_conn()
+    if not conn:
+        return []
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            if query:
+                cur.execute("""
+                    SELECT id, name, slug, specialty, city, country, status
+                    FROM doctors
+                    WHERE LOWER(name) LIKE %s OR LOWER(slug) LIKE %s
+                    ORDER BY name LIMIT 20
+                """, [f'%{query.lower()}%', f'%{query.lower()}%'])
+            else:
+                cur.execute("""
+                    SELECT id, name, slug, specialty, city, country, status
+                    FROM doctors
+                    ORDER BY created_at DESC LIMIT 20
+                """)
+            return [dict(r) for r in cur.fetchall()]
+    except Exception as e:
+        print(f"[DB Error] {e}")
+        return []
+    finally:
+        conn.close()
+
+
 # ── Default Prompt ───────────────────────────────────────────
 
 DEFAULT_PROMPT = """You are a professional medical content writer for Ginger Healthcare (ginger.healthcare), a medical tourism platform.
