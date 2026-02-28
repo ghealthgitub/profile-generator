@@ -277,6 +277,20 @@
             </div>
             <button class="add-url-btn" onclick="addUrlRow()">+ Add another URL</button>
 
+            <!-- Manual text fallback -->
+            <div style="margin-top:16px">
+                <div style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#6B7280;font-size:13px" onclick="toggleManualInput()">
+                    <span id="manualToggleIcon">▶</span>
+                    <span>📝 <strong>Paste doctor info manually</strong> (if scraper can't read the website)</span>
+                </div>
+                <div id="manualInputWrap" class="hidden" style="margin-top:10px">
+                    <textarea id="manualText" style="width:100%;min-height:150px;padding:12px;border:2px solid #E5E7EB;border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;line-height:1.6" placeholder="Paste the doctor's information here — name, qualifications, specialties, experience, hospital affiliations, procedures performed, awards, etc.
+
+You can copy-paste from the hospital website, a CV, or type it manually. The more detail you provide, the better the generated profile will be."></textarea>
+                    <div class="hint" style="font-size:11px;color:#9CA3AF;margin-top:4px">This text will be sent to Claude alongside any scraped content. You can use this even without URLs.</div>
+                </div>
+            </div>
+
             <div class="btn-row">
                 <button class="btn btn-orange" id="generateBtn" onclick="generateProfile()">⚡ Generate Profile</button>
             </div>
@@ -513,22 +527,42 @@
                 .filter(Boolean);
         }
 
+        // ── Manual Input Toggle ──
+        function toggleManualInput() {
+            const wrap = document.getElementById('manualInputWrap');
+            const icon = document.getElementById('manualToggleIcon');
+            if (wrap.classList.contains('hidden')) {
+                wrap.classList.remove('hidden');
+                icon.textContent = '▼';
+                document.getElementById('manualText').focus();
+            } else {
+                wrap.classList.add('hidden');
+                icon.textContent = '▶';
+            }
+        }
+
         // ── Generate ──
         async function generateProfile() {
             const urls = getUrls();
-            if (!urls.length) return showStatus('Enter at least one URL', 'error');
+            const manualText = (document.getElementById('manualText') || {}).value || '';
+
+            if (!urls.length && !manualText.trim()) return showStatus('Enter at least one URL or paste doctor information manually', 'error');
 
             const btn = document.getElementById('generateBtn');
             btn.disabled = true;
             btn.textContent = 'Analyzing...';
             hideResults();
-            showStatus('<div class="spinner"></div> Scraping ' + urls.length + ' URL(s) & generating profile...', 'loading');
+
+            const sourceDesc = [];
+            if (urls.length) sourceDesc.push(urls.length + ' URL(s)');
+            if (manualText.trim()) sourceDesc.push('manual input');
+            showStatus('<div class="spinner"></div> Scraping ' + sourceDesc.join(' + ') + ' & generating profile...', 'loading');
 
             try {
                 const res = await fetch('/generate', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ urls })
+                    body: JSON.stringify({ urls, manual_text: manualText })
                 });
                 const data = await res.json();
 
@@ -576,19 +610,27 @@
         function renderScrapeSummary(data) {
             const el = document.getElementById('scrapeSummary');
             let html = '';
-            if (data.urls) {
+            if (data.urls && data.urls.length) {
                 html += '<div style="margin-bottom:8px"><span class="label">Sources:</span>';
-                data.urls.forEach(u => html += '<span class="tag tag-blue">' + new URL(u).hostname + '</span>');
+                data.urls.forEach(u => { try { html += '<span class="tag tag-blue">' + new URL(u).hostname + '</span>'; } catch(e) { html += '<span class="tag tag-blue">' + u.substring(0,40) + '</span>'; } });
                 html += '</div>';
             }
             if (data.titles && data.titles.length) {
-                html += '<div><span class="label">Pages:</span>';
+                html += '<div style="margin-bottom:8px"><span class="label">Pages:</span>';
                 data.titles.forEach(t => html += '<span class="tag tag-green">' + t.substring(0,60) + '</span>');
                 html += '</div>';
             }
-            html += '<div style="margin-top:8px;color:#9CA3AF;font-size:12px">' +
+            if (data.has_manual_text) {
+                html += '<div style="margin-bottom:8px"><span class="tag tag-orange">📝 Manual input included</span></div>';
+            }
+            if (data.errors && data.errors.length) {
+                html += '<div style="margin-bottom:8px">';
+                data.errors.forEach(e => html += '<div style="color:#DC2626;font-size:12px">⚠️ ' + e + '</div>');
+                html += '</div>';
+            }
+            html += '<div style="color:#9CA3AF;font-size:12px">' +
                     (data.url_count || 0) + ' page(s) scraped, ~' +
-                    Math.round((data.combined_text||'').length/1000) + 'KB text extracted</div>';
+                    Math.round((data.total_chars || (data.combined_text||'').length)/1000) + 'KB text extracted</div>';
             el.innerHTML = html;
             document.getElementById('scrapeCard').classList.remove('hidden');
         }

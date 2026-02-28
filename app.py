@@ -117,14 +117,15 @@ def generate():
     try:
         urls = request.json.get('urls', [])
         urls = [u.strip() for u in urls if u.strip()]
+        manual_text = request.json.get('manual_text', '').strip()
 
-        if not urls:
-            return jsonify({'error': 'At least one URL is required'}), 400
+        if not urls and not manual_text:
+            return jsonify({'error': 'Provide at least one URL or paste doctor information manually'}), 400
 
-        # Step 1: Scrape all URLs
-        scraped = scrape_multiple_urls(urls)
+        # Step 1: Scrape all URLs + include manual text
+        scraped = scrape_multiple_urls(urls, manual_text=manual_text)
         if not scraped:
-            return jsonify({'error': 'Could not extract data from any of the provided URLs'}), 400
+            return jsonify({'error': 'Could not extract data. Try pasting the doctor\'s information manually.'}), 400
 
         # Step 2: Load treatment dictionary from DB
         treatments = get_treatment_dictionary()
