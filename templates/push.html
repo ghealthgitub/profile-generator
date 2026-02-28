@@ -1,0 +1,308 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Push to Admin | Ginger Universe</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0B2545;--navy-light:#13315C;--ginger:#F26522;--teal:#0EA5A0;--gray-50:#F9FAFB;--gray-100:#F3F4F6;--gray-200:#E5E7EB;--gray-400:#9CA3AF;--gray-500:#6B7280;--gray-700:#374151}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--gray-100);color:var(--gray-700);min-height:100vh}
+
+.topbar{display:flex;align-items:center;gap:16px;padding:0 24px;background:var(--navy);height:52px}
+.topbar .logo{color:white;font-family:'Playfair Display',serif;font-size:16px;font-weight:700}
+.topbar .logo span{color:var(--ginger)}
+.topbar h1{color:white;font-size:14px;font-weight:500;flex:1}
+.topbar .badge{background:rgba(14,165,160,.2);color:#5EEAD4;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px}
+
+.container{max-width:760px;margin:24px auto;padding:0 20px}
+
+.card{background:white;border-radius:14px;border:1.5px solid var(--gray-200);padding:28px;margin-bottom:20px}
+.card h2{font-family:'Playfair Display',serif;color:var(--navy);font-size:18px;margin-bottom:16px}
+
+.loading{text-align:center;padding:60px 20px}
+.loading .spinner{width:28px;height:28px;border:3px solid var(--gray-200);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading h3{color:var(--navy);font-size:16px;margin-bottom:4px}
+.loading p{color:var(--gray-400);font-size:13px}
+
+.success{text-align:center;padding:40px 20px}
+.success .icon{font-size:52px;margin-bottom:12px}
+.success h3{color:#065F46;font-size:20px;margin-bottom:6px}
+.success p{color:var(--gray-500);margin-bottom:20px}
+
+.ai-note{background:#F0FDFA;border:1px solid #99F6E4;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#0F766E}
+
+.form-row{margin-bottom:14px}
+.form-row label{display:block;font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:5px}
+.form-row .hint{font-size:11px;color:var(--gray-400);margin-top:3px}
+.form-select,.form-input{width:100%;padding:10px 12px;border:2px solid var(--gray-200);border-radius:8px;font-size:14px;font-family:inherit;transition:border-color .2s}
+.form-select:focus,.form-input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(14,165,160,.08)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+.treatment-checklist{max-height:200px;overflow-y:auto;border:2px solid var(--gray-200);border-radius:8px;padding:10px}
+.treatment-checklist label{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;font-weight:400;cursor:pointer}
+.treatment-checklist input[type=checkbox]{accent-color:var(--teal);width:16px;height:16px}
+.treatment-checklist .empty{color:var(--gray-400);font-size:13px;padding:8px 0}
+
+.mode-tabs{display:flex;gap:4px;margin-bottom:18px;background:var(--gray-100);border-radius:8px;padding:4px}
+.mode-tab{flex:1;padding:8px;text-align:center;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--gray-500);border:none;background:transparent;font-family:inherit;transition:all .2s}
+.mode-tab.active{background:white;color:var(--navy);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+
+.doctor-search-results{max-height:180px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:8px;margin-top:8px}
+.doctor-search-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--gray-100);font-size:13px}
+.doctor-search-item:hover{background:#F0FDFA}
+.doctor-search-item .name{font-weight:600}
+.doctor-search-item .meta{color:var(--gray-400);font-size:11px}
+
+.btn{padding:10px 20px;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;border:none;font-family:inherit;transition:all .2s}
+.btn-teal{background:var(--teal);color:white}.btn-teal:hover{background:#0c918c}
+.btn-navy{background:var(--navy);color:white}.btn-navy:hover{background:var(--navy-light)}
+.btn-outline{background:white;color:var(--gray-500);border:2px solid var(--gray-200)}.btn-outline:hover{border-color:var(--gray-400)}
+.btn-row{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--gray-200)}
+
+.hidden{display:none!important}
+@media(max-width:640px){.form-grid,.form-grid-3{grid-template-columns:1fr}}
+</style>
+</head><body>
+
+<div class="topbar">
+    <div class="logo">🫚 <span>Ginger</span> Universe</div>
+    <h1>🚀 Push to Admin Dashboard</h1>
+    <span class="badge">Profile #{{ profile_id or '—' }}</span>
+</div>
+
+<div class="container">
+    <!-- Loading -->
+    <div id="loadingCard" class="card loading">
+        <div class="spinner"></div>
+        <h3>AI is extracting doctor information...</h3>
+        <p>Auto-filling fields from the generated profile</p>
+    </div>
+
+    <!-- Success -->
+    <div id="successCard" class="card success hidden">
+        <div class="icon">✅</div>
+        <h3 id="successTitle">Doctor created!</h3>
+        <p id="successMsg"></p>
+        <div style="display:flex;gap:10px;justify-content:center">
+            <a id="adminLink" href="#" target="_blank" class="btn btn-teal" style="text-decoration:none">Open in Doctor Studio →</a>
+            <button class="btn btn-outline" onclick="window.close()">Close Tab</button>
+        </div>
+    </div>
+
+    <!-- Form -->
+    <div id="formCard" class="card hidden">
+        <h2>🚀 Push Doctor to Admin</h2>
+
+        <div class="mode-tabs">
+            <button class="mode-tab active" onclick="setPushMode('new')">➕ Create New Doctor</button>
+            <button class="mode-tab" onclick="setPushMode('update')">✏️ Update Existing</button>
+        </div>
+
+        <div id="updateSection" class="hidden">
+            <div class="form-row">
+                <label>Search Existing Doctor</label>
+                <input type="text" class="form-input" id="doctorSearch" placeholder="Type doctor name..." oninput="searchDoctors(this.value)">
+                <div id="doctorSearchResults" class="doctor-search-results hidden"></div>
+            </div>
+        </div>
+
+        <div id="aiNote" class="ai-note hidden">✨ Fields auto-filled by AI. Please review and correct if needed.</div>
+
+        <div class="form-row">
+            <label>Doctor Name *</label>
+            <div class="form-grid">
+                <select class="form-select" id="pushTitle" style="max-width:100px">
+                    <option value="Dr.">Dr.</option><option value="Prof.">Prof.</option><option value="Mr.">Mr.</option><option value="Ms.">Ms.</option>
+                </select>
+                <input type="text" class="form-input" id="pushName" placeholder="Full name">
+            </div>
+        </div>
+
+        <div class="form-grid-3">
+            <div class="form-row"><label>Destination *</label><select class="form-select" id="pushDestination" onchange="onDestinationChange()"><option value="">Select country...</option></select></div>
+            <div class="form-row"><label>Hospital</label><select class="form-select" id="pushHospital" onchange="onHospitalChange()"><option value="">Select hospital...</option></select></div>
+            <div class="form-row"><label>Specialty *</label><select class="form-select" id="pushSpecialty" onchange="onSpecialtyChange()"><option value="">Select specialty...</option></select></div>
+        </div>
+
+        <div class="form-grid">
+            <div class="form-row"><label>City</label><select class="form-select" id="pushCity"><option value="">Select city...</option></select></div>
+            <div class="form-row"><label>Experience (years)</label><input type="number" class="form-input" id="pushExperience" placeholder="e.g. 25"></div>
+        </div>
+
+        <div class="form-grid">
+            <div class="form-row"><label>Qualifications</label><input type="text" class="form-input" id="pushQualifications" placeholder="MBBS, MS, MCh"><div class="hint">Comma-separated</div></div>
+            <div class="form-row"><label>Languages</label><input type="text" class="form-input" id="pushLanguages" placeholder="English, Hindi"><div class="hint">Comma-separated</div></div>
+        </div>
+
+        <div class="form-row"><label>Short Description</label><input type="text" class="form-input" id="pushDescription" placeholder="One-line summary for listing cards"></div>
+
+        <div class="form-row">
+            <label>Link Treatments <span id="txCount" style="color:var(--gray-400);font-weight:400"></span></label>
+            <input type="text" class="form-input" id="txSearchInput" placeholder="Search treatments..." oninput="filterTreatmentChecklist()" style="margin-bottom:6px;font-size:13px">
+            <div id="treatmentChecklist" class="treatment-checklist"><div class="empty">Select a specialty first</div></div>
+        </div>
+
+        <div class="form-grid">
+            <div class="form-row"><label>Meta Title</label><input type="text" class="form-input" id="pushMetaTitle" placeholder="SEO title (auto if empty)"></div>
+            <div class="form-row"><label>Publish Status</label><select class="form-select" id="pushStatus"><option value="draft">Draft (review first)</option><option value="published">Published (live immediately)</option></select></div>
+        </div>
+
+        <div class="btn-row">
+            <button class="btn btn-outline" onclick="window.close()">Cancel</button>
+            <button class="btn btn-navy" id="pushBtn" onclick="executePush()">🚀 Push to Admin</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const profileId = '{{ profile_id }}';
+const adminUrl = '{{ admin_url }}';
+const CITY_LIST = ['Delhi NCR','Mumbai','Bengaluru','Chennai','Hyderabad','Kolkata','Pune','Ahmedabad','Guwahati','Gurugram','Noida','Jaipur','Lucknow','Chandigarh','Kochi','Thiruvananthapuram','Coimbatore','Nagpur','Visakhapatnam','Bhubaneswar','Indore','Mangalore'];
+
+let pushData = null, pushMode = 'new', selectedDoctorId = null, allTreatmentsForSpec = [], profileContent = '';
+
+// ── Init ──
+async function init() {
+    // Load dropdown data + profile
+    const [ddRes, profRes] = await Promise.all([
+        fetch('/api/push-data'),
+        profileId ? fetch('/api/profile/' + profileId) : null
+    ]);
+    pushData = await ddRes.json();
+    const profile = profRes ? await profRes.json() : null;
+    profileContent = profile ? (profile.edited_content || profile.generated_content || '') : '';
+
+    populateSelect('pushDestination', pushData.destinations, 'name', 'id', d => (d.flag||'')+' '+d.name);
+    populateSelect('pushHospital', pushData.hospitals, 'name', 'id', h => h.name+(h.city?' — '+h.city:''));
+    populateSelect('pushSpecialty', pushData.specialties, 'name', 'id', s => (s.icon||'')+' '+s.name);
+    populateCitySelect();
+
+    // AI auto-extract
+    if (profileContent) {
+        try {
+            const extRes = await fetch('/api/auto-extract', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ profile_text: profileContent })
+            });
+            const ext = await extRes.json();
+            if (!ext.error) {
+                if (ext.title) document.getElementById('pushTitle').value = ext.title;
+                if (ext.name) document.getElementById('pushName').value = ext.name;
+                if (ext.destination_id) { document.getElementById('pushDestination').value = ext.destination_id; onDestinationChange(); }
+                if (ext.hospital_id) document.getElementById('pushHospital').value = ext.hospital_id;
+                if (ext.specialty_id) { document.getElementById('pushSpecialty').value = ext.specialty_id; await onSpecialtyChange(); if (ext.suggested_treatments) autoCheckTreatments(ext.suggested_treatments); }
+                if (ext.city) setCityValue(ext.city); else if (ext.hospital_city) setCityValue(ext.hospital_city);
+                if (ext.experience_years) document.getElementById('pushExperience').value = ext.experience_years;
+                if (ext.qualifications) document.getElementById('pushQualifications').value = ext.qualifications.join(', ');
+                if (ext.languages) document.getElementById('pushLanguages').value = ext.languages.join(', ');
+                if (ext.description) document.getElementById('pushDescription').value = ext.description;
+                document.getElementById('aiNote').classList.remove('hidden');
+            }
+        } catch(e) { console.error('Auto-extract:', e); }
+    }
+
+    document.getElementById('loadingCard').classList.add('hidden');
+    document.getElementById('formCard').classList.remove('hidden');
+}
+
+// ── Dropdown helpers ──
+function populateSelect(id, items, lk, vk, fmt) {
+    const s = document.getElementById(id); const c = s.value;
+    s.innerHTML = s.options[0].outerHTML;
+    items.forEach(i => { const o = document.createElement('option'); o.value = i[vk]; o.textContent = fmt?fmt(i):i[lk]; s.appendChild(o); });
+    if (c) s.value = c;
+}
+function populateCitySelect() {
+    const s = document.getElementById('pushCity');
+    s.innerHTML = '<option value="">Select city...</option>' + CITY_LIST.map(c=>'<option value="'+c+'">'+c+'</option>').join('');
+}
+function setCityValue(city) {
+    const s = document.getElementById('pushCity');
+    const m = Array.from(s.options).find(o=>o.value.toLowerCase()===city.toLowerCase());
+    if (m) s.value = m.value;
+    else if (city) { const o=document.createElement('option');o.value=city;o.textContent=city;s.appendChild(o);s.value=city; }
+}
+
+// ── Cascading ──
+function onDestinationChange() {
+    const id = document.getElementById('pushDestination').value;
+    if (!id||!pushData) return;
+    const f = pushData.hospitals.filter(h=>h.destination_id==id);
+    populateSelect('pushHospital', f.length?f:pushData.hospitals, 'name','id', h=>h.name+(h.city?' — '+h.city:''));
+}
+function onHospitalChange() {
+    const id = document.getElementById('pushHospital').value;
+    if (!id||!pushData) return;
+    const h = pushData.hospitals.find(x=>x.id==id);
+    if (h) { if (h.city&&!document.getElementById('pushCity').value) setCityValue(h.city); if (h.destination_id&&!document.getElementById('pushDestination').value) document.getElementById('pushDestination').value=h.destination_id; }
+}
+async function onSpecialtyChange() {
+    const id = document.getElementById('pushSpecialty').value;
+    const c = document.getElementById('treatmentChecklist');
+    if (!id) { c.innerHTML='<div class="empty">Select a specialty first</div>'; allTreatmentsForSpec=[]; updateTxCount(); return; }
+    c.innerHTML='<div class="empty">Loading...</div>';
+    try { const r=await fetch('/api/push-treatments/'+id); allTreatmentsForSpec=await r.json(); renderTreatmentChecklist(); } catch(e) { c.innerHTML='<div class="empty">Error</div>'; allTreatmentsForSpec=[]; }
+    updateTxCount();
+}
+
+// ── Treatments ──
+function renderTreatmentChecklist() {
+    const c=document.getElementById('treatmentChecklist'), q=(document.getElementById('txSearchInput').value||'').toLowerCase();
+    let f=allTreatmentsForSpec; if(q) f=f.filter(t=>t.name.toLowerCase().includes(q));
+    if(!f.length){c.innerHTML='<div class="empty">'+(q?'No match':'No treatments')+'</div>';return}
+    c.innerHTML=f.map(t=>'<label><input type="checkbox" value="'+t.id+'" onchange="updateTxCount()"'+(t._checked?' checked':'')+'>'+t.name+'</label>').join('');
+}
+function filterTreatmentChecklist(){document.querySelectorAll('#treatmentChecklist input').forEach(cb=>{const t=allTreatmentsForSpec.find(x=>x.id==cb.value);if(t)t._checked=cb.checked});renderTreatmentChecklist()}
+function autoCheckTreatments(names){if(!names||!names.length)return;const ln=names.map(n=>n.toLowerCase());allTreatmentsForSpec.forEach(t=>{t._checked=ln.some(s=>t.name.toLowerCase().includes(s)||s.includes(t.name.toLowerCase()))});renderTreatmentChecklist();updateTxCount()}
+function updateTxCount(){const c=document.querySelectorAll('#treatmentChecklist input:checked').length,a=allTreatmentsForSpec.length;document.getElementById('txCount').textContent=a?'('+c+'/'+a+' selected)':''}
+
+// ── Mode & Search ──
+function setPushMode(m){pushMode=m;selectedDoctorId=null;document.querySelectorAll('.mode-tab').forEach((t,i)=>t.classList.toggle('active',(m==='new'&&i===0)||(m==='update'&&i===1)));document.getElementById('updateSection').classList.toggle('hidden',m==='new')}
+let st=null;
+function searchDoctors(q){clearTimeout(st);st=setTimeout(async()=>{if(q.length<2){document.getElementById('doctorSearchResults').classList.add('hidden');return}try{const r=await fetch('/api/search-doctors?q='+encodeURIComponent(q));const d=await r.json();const c=document.getElementById('doctorSearchResults');c.innerHTML=d.length?d.map(x=>'<div class="doctor-search-item" onclick="selectDoc('+x.id+',\''+x.name.replace(/'/g,"\\'")+'\')">'+'<div class="name">'+x.name+'</div><div class="meta">'+(x.specialty||'')+' · '+(x.city||'')+' · '+x.status+'</div></div>').join(''):'<div class="doctor-search-item"><span class="meta">None found</span></div>';c.classList.remove('hidden')}catch(e){}},300)}
+function selectDoc(id,name){selectedDoctorId=id;document.getElementById('pushName').value=name;document.getElementById('doctorSearch').value=name;document.getElementById('doctorSearchResults').classList.add('hidden')}
+
+// ── Push ──
+async function executePush(){
+    const btn=document.getElementById('pushBtn');btn.disabled=true;btn.textContent='Pushing...';
+    const name=document.getElementById('pushName').value.trim();
+    if(!name){btn.disabled=false;btn.textContent='🚀 Push to Admin';alert('Name required');return}
+    const txIds=Array.from(document.querySelectorAll('#treatmentChecklist input:checked')).map(c=>parseInt(c.value));
+    const specEl=document.getElementById('pushSpecialty');
+    const payload={
+        profile_id:profileId?parseInt(profileId):null,
+        existing_doctor_id:pushMode==='update'?selectedDoctorId:null,
+        name, title:document.getElementById('pushTitle').value,
+        destination_id:parseInt(document.getElementById('pushDestination').value)||null,
+        hospital_id:parseInt(document.getElementById('pushHospital').value)||null,
+        specialty_id:parseInt(specEl.value)||null,
+        specialty_text:specEl.selectedOptions[0]?specEl.selectedOptions[0].textContent.trim():'',
+        city:document.getElementById('pushCity').value,
+        country:document.getElementById('pushDestination').selectedOptions[0]?.textContent.trim()||'',
+        experience_years:parseInt(document.getElementById('pushExperience').value)||null,
+        qualifications:document.getElementById('pushQualifications').value.split(',').map(s=>s.trim()).filter(Boolean),
+        languages:document.getElementById('pushLanguages').value.split(',').map(s=>s.trim()).filter(Boolean),
+        description:document.getElementById('pushDescription').value.trim(),
+        long_description:profileContent,
+        treatment_ids:txIds,
+        meta_title:document.getElementById('pushMetaTitle').value.trim()||('Dr. '+name+' — Ginger Healthcare'),
+        meta_description:document.getElementById('pushDescription').value.trim().substring(0,160),
+        status:document.getElementById('pushStatus').value
+    };
+    try{
+        const r=await fetch('/api/push-doctor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        const res=await r.json();
+        if(res.success){
+            document.getElementById('formCard').classList.add('hidden');
+            document.getElementById('successCard').classList.remove('hidden');
+            document.getElementById('successTitle').textContent=res.is_update?'Doctor updated!':'Doctor created!';
+            document.getElementById('successMsg').textContent='ID: #'+res.doctor_id+' · Slug: '+res.slug+' · Status: '+payload.status;
+            document.getElementById('adminLink').href=adminUrl+'/doctors/edit/'+res.doctor_id;
+        } else { alert('Failed: '+(res.error||'Unknown')); }
+    }catch(e){alert('Error: '+e.message)}
+    btn.disabled=false;btn.textContent='🚀 Push to Admin';
+}
+
+init();
+</script>
+</body></html>

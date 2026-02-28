@@ -479,8 +479,8 @@ def push_doctor_to_admin(data, profile_id=None, user_email=''):
             treatment_ids = data.get('treatment_ids', [])
 
             # Get legacy text values for backward compat columns
-            specialty_text = ''
-            if specialty_id:
+            specialty_text = data.get('specialty_text', '')
+            if not specialty_text and specialty_id:
                 cur.execute("SELECT name FROM specialties WHERE id = %s", [specialty_id])
                 row = cur.fetchone()
                 if row:

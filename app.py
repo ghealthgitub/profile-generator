@@ -108,6 +108,17 @@ def dashboard():
     )
 
 
+@app.route('/push')
+@login_required
+def push_page():
+    profile_id = request.args.get('profile_id', '')
+    return render_template('push.html',
+        user=session['user'],
+        profile_id=profile_id,
+        admin_url=config.ADMIN_URL
+    )
+
+
 # ═══════════════════════════════════════════════════════════════
 # GENERATE PROFILE
 # ═══════════════════════════════════════════════════════════════
