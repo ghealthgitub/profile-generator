@@ -486,52 +486,76 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
 
         // ── Clipboard Paste Support ──
         let pasteCounter = 0;
+
+        function addPastedImage(blob) {
+            if (!blob || blob.size === 0) return;
+
+            // Auto-open file upload section if hidden
+            const wrap = document.getElementById('fileUploadWrap');
+            if (wrap.classList.contains('hidden')) {
+                wrap.classList.remove('hidden');
+                document.getElementById('fileToggleIcon').textContent = '▼';
+            }
+
+            if (uploadedFiles.length >= 10) {
+                showStatus('Max 10 files allowed', 'error');
+                return;
+            }
+            if (blob.size > 50 * 1024 * 1024) {
+                showStatus('Pasted image exceeds 50MB limit', 'error');
+                return;
+            }
+
+            // Create a named File from the blob
+            pasteCounter++;
+            const mimeType = blob.type || 'image/png';
+            const ext = mimeType.indexOf('jpeg') !== -1 ? 'jpg' : (mimeType.split('/')[1] || 'png');
+            const fileName = 'pasted-screenshot-' + pasteCounter + '.' + ext;
+            const file = new File([blob], fileName, { type: mimeType, lastModified: Date.now() });
+            uploadedFiles.push(file);
+            renderFileList();
+
+            // Flash the drop zone to confirm paste
+            const dz = document.getElementById('dropZone');
+            if (dz) {
+                dz.style.borderColor = '#0EA5A0';
+                dz.style.background = '#F0FDFA';
+                setTimeout(function() { dz.style.borderColor = '#D1D5DB'; dz.style.background = '#FAFAFA'; }, 600);
+            }
+
+            flashStatus('📋 Screenshot pasted! (' + (blob.size / 1024 / 1024).toFixed(1) + ' MB)');
+        }
+
         document.addEventListener('paste', function(e) {
-            const items = (e.clipboardData || e.originalEvent.clipboardData || {}).items;
-            if (!items) return;
+            var clipData = e.clipboardData;
+            if (!clipData) return;
 
-            let imageFound = false;
-            for (const item of items) {
-                if (item.type.startsWith('image/')) {
-                    e.preventDefault();
-                    imageFound = true;
-                    const blob = item.getAsFile();
-                    if (!blob) continue;
-
-                    // Auto-open file upload section if hidden
-                    const wrap = document.getElementById('fileUploadWrap');
-                    if (wrap.classList.contains('hidden')) {
-                        wrap.classList.remove('hidden');
-                        document.getElementById('fileToggleIcon').textContent = '▼';
+            // Method 1: Check clipboardData.items (Chrome, Edge, modern browsers)
+            if (clipData.items && clipData.items.length) {
+                for (var i = 0; i < clipData.items.length; i++) {
+                    var item = clipData.items[i];
+                    if (item.kind === 'file' && item.type.indexOf('image') !== -1) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        var blob = item.getAsFile();
+                        addPastedImage(blob);
+                        return;
                     }
-
-                    if (uploadedFiles.length >= 10) {
-                        showStatus('Max 10 files allowed', 'error');
-                        break;
-                    }
-                    if (blob.size > 50 * 1024 * 1024) {
-                        showStatus('Pasted image exceeds 50MB limit', 'error');
-                        continue;
-                    }
-
-                    // Create a named File from the blob
-                    pasteCounter++;
-                    const ext = blob.type.split('/')[1] === 'jpeg' ? 'jpg' : (blob.type.split('/')[1] || 'png');
-                    const fileName = 'pasted-screenshot-' + pasteCounter + '.' + ext;
-                    const file = new File([blob], fileName, { type: blob.type });
-                    uploadedFiles.push(file);
-                    renderFileList();
-
-                    // Flash the drop zone to confirm paste
-                    const dz = document.getElementById('dropZone');
-                    dz.style.borderColor = '#0EA5A0';
-                    dz.style.background = '#F0FDFA';
-                    setTimeout(() => { dz.style.borderColor = '#D1D5DB'; dz.style.background = '#FAFAFA'; }, 600);
-
-                    flashStatus('📋 Screenshot pasted! (' + (blob.size / 1024 / 1024).toFixed(1) + ' MB)');
                 }
             }
-        });
+
+            // Method 2: Check clipboardData.files (Firefox, Safari fallback)
+            if (clipData.files && clipData.files.length) {
+                for (var j = 0; j < clipData.files.length; j++) {
+                    if (clipData.files[j].type.indexOf('image') !== -1) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        addPastedImage(clipData.files[j]);
+                        return;
+                    }
+                }
+            }
+        }, true);  // useCapture=true to intercept before input fields
 
         // ── Generate ──
         async function generateProfile() {
