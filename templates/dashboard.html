@@ -298,14 +298,15 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
                     <span>📸 <strong>Upload screenshots / files</strong> (best for sites that block scraping)</span>
                 </div>
                 <div id="fileUploadWrap" class="hidden" style="margin-top:10px">
-                    <div id="dropZone" style="border:2px dashed #D1D5DB;border-radius:10px;padding:28px 16px;text-align:center;cursor:pointer;transition:all .2s;background:#FAFAFA" onclick="document.getElementById('fileInput').click()" ondragover="event.preventDefault();this.style.borderColor='#0EA5A0';this.style.background='#F0FDFA'" ondragleave="this.style.borderColor='#D1D5DB';this.style.background='#FAFAFA'" ondrop="handleFileDrop(event)">
+                    <div id="dropZone" tabindex="0" style="border:2px dashed #D1D5DB;border-radius:10px;padding:28px 16px;text-align:center;cursor:pointer;transition:all .2s;background:#FAFAFA" onclick="document.getElementById('fileInput').click()" ondragover="event.preventDefault();this.style.borderColor='#0EA5A0';this.style.background='#F0FDFA'" ondragleave="this.style.borderColor='#D1D5DB';this.style.background='#FAFAFA'" ondrop="handleFileDrop(event)">
                         <div style="font-size:28px;margin-bottom:6px">📁</div>
-                        <div style="font-weight:600;color:#374151;font-size:14px">Drop files here or click to browse</div>
-                        <div style="color:#9CA3AF;font-size:12px;margin-top:4px">PNG, JPG, WEBP, PDF — up to 10 files, 20MB each</div>
+                        <div style="font-weight:600;color:#374151;font-size:14px">Drop files, click to browse, or paste from clipboard</div>
+                        <div style="color:#9CA3AF;font-size:12px;margin-top:4px">PNG, JPG, WEBP, PDF — up to 10 files, 50MB each</div>
+                        <div style="color:#0EA5A0;font-size:12px;margin-top:4px;font-weight:500">📋 Tip: Copy a screenshot and press Ctrl+V / ⌘+V anywhere on this page</div>
                     </div>
                     <input type="file" id="fileInput" multiple accept="image/*,.pdf" style="display:none" onchange="handleFileSelect(this.files)">
                     <div id="fileList" style="margin-top:8px"></div>
-                    <div class="hint" style="font-size:11px;color:#9CA3AF;margin-top:4px">Take full-page screenshots of the doctor's profile and upload. Claude will read the images directly.</div>
+                    <div class="hint" style="font-size:11px;color:#9CA3AF;margin-top:4px">Take full-page screenshots of the doctor's profile and upload. You can also copy an image and paste it directly (Ctrl+V). Claude will read the images directly.</div>
                 </div>
             </div>
 
@@ -455,7 +456,7 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
         function handleFileSelect(fileList) {
             for (const f of fileList) {
                 if (uploadedFiles.length >= 10) { showStatus('Max 10 files allowed', 'error'); break; }
-                if (f.size > 20 * 1024 * 1024) { showStatus(f.name + ' exceeds 20MB limit', 'error'); continue; }
+                if (f.size > 50 * 1024 * 1024) { showStatus(f.name + ' exceeds 50MB limit', 'error'); continue; }
                 const allowed = ['image/png','image/jpeg','image/jpg','image/webp','image/gif','application/pdf'];
                 if (!allowed.includes(f.type)) { showStatus(f.name + ' — unsupported type. Use PNG, JPG, WEBP, or PDF.', 'error'); continue; }
                 uploadedFiles.push(f);
@@ -482,6 +483,55 @@ You can copy-paste from the hospital website, a CV, or type it manually. The mor
             uploadedFiles.splice(idx, 1);
             renderFileList();
         }
+
+        // ── Clipboard Paste Support ──
+        let pasteCounter = 0;
+        document.addEventListener('paste', function(e) {
+            const items = (e.clipboardData || e.originalEvent.clipboardData || {}).items;
+            if (!items) return;
+
+            let imageFound = false;
+            for (const item of items) {
+                if (item.type.startsWith('image/')) {
+                    e.preventDefault();
+                    imageFound = true;
+                    const blob = item.getAsFile();
+                    if (!blob) continue;
+
+                    // Auto-open file upload section if hidden
+                    const wrap = document.getElementById('fileUploadWrap');
+                    if (wrap.classList.contains('hidden')) {
+                        wrap.classList.remove('hidden');
+                        document.getElementById('fileToggleIcon').textContent = '▼';
+                    }
+
+                    if (uploadedFiles.length >= 10) {
+                        showStatus('Max 10 files allowed', 'error');
+                        break;
+                    }
+                    if (blob.size > 50 * 1024 * 1024) {
+                        showStatus('Pasted image exceeds 50MB limit', 'error');
+                        continue;
+                    }
+
+                    // Create a named File from the blob
+                    pasteCounter++;
+                    const ext = blob.type.split('/')[1] === 'jpeg' ? 'jpg' : (blob.type.split('/')[1] || 'png');
+                    const fileName = 'pasted-screenshot-' + pasteCounter + '.' + ext;
+                    const file = new File([blob], fileName, { type: blob.type });
+                    uploadedFiles.push(file);
+                    renderFileList();
+
+                    // Flash the drop zone to confirm paste
+                    const dz = document.getElementById('dropZone');
+                    dz.style.borderColor = '#0EA5A0';
+                    dz.style.background = '#F0FDFA';
+                    setTimeout(() => { dz.style.borderColor = '#D1D5DB'; dz.style.background = '#FAFAFA'; }, 600);
+
+                    flashStatus('📋 Screenshot pasted! (' + (blob.size / 1024 / 1024).toFixed(1) + ' MB)');
+                }
+            }
+        });
 
         // ── Generate ──
         async function generateProfile() {
