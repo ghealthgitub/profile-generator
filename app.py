@@ -198,7 +198,6 @@ def generate_from_files():
             if f and f.filename:
                 file_data = f.read()
                 if len(file_data) > 0:
-                    b64 = base64.b64encode(file_data).decode('utf-8')
                     fname = f.filename.lower()
                     if fname.endswith('.png'): media_type = 'image/png'
                     elif fname.endswith(('.jpg','.jpeg')): media_type = 'image/jpeg'
@@ -206,6 +205,62 @@ def generate_from_files():
                     elif fname.endswith('.gif'): media_type = 'image/gif'
                     elif fname.endswith('.pdf'): media_type = 'application/pdf'
                     else: media_type = 'image/png'
+
+                    # Auto-resize and compress images for Claude's API limits
+                    # Limits: max 8000px per dimension, max ~5MB per image
+                    if not fname.endswith('.pdf'):
+                        try:
+                            from PIL import Image
+                            import io
+
+                            MAX_DIM = 7900       # stay safely under 8000px
+                            MAX_BYTES = 4.5 * 1024 * 1024  # stay safely under 5MB
+
+                            img = Image.open(io.BytesIO(file_data))
+                            w, h = img.size
+                            resized = False
+
+                            # Step 1: Resize if any dimension exceeds pixel limit
+                            if w > MAX_DIM or h > MAX_DIM:
+                                scale = min(MAX_DIM / w, MAX_DIM / h)
+                                new_w, new_h = int(w * scale), int(h * scale)
+                                img = img.resize((new_w, new_h), Image.LANCZOS)
+                                resized = True
+                                print(f"[Resize] {f.filename}: {w}x{h} → {new_w}x{new_h}")
+
+                            # Step 2: Convert to JPEG for compression (unless already small)
+                            # For doctor profile screenshots, JPEG is fine — no transparency needed
+                            needs_compress = len(file_data) > MAX_BYTES or resized
+
+                            if needs_compress:
+                                if img.mode in ('RGBA', 'P', 'LA'):
+                                    img = img.convert('RGB')
+                                media_type = 'image/jpeg'
+
+                                # Try quality levels until under size limit
+                                for quality in [90, 80, 65, 50, 35]:
+                                    buf = io.BytesIO()
+                                    img.save(buf, format='JPEG', quality=quality, optimize=True)
+                                    file_data = buf.getvalue()
+                                    if len(file_data) <= MAX_BYTES:
+                                        print(f"[Compress] {f.filename}: quality={quality}, size={len(file_data)/1024/1024:.1f}MB")
+                                        break
+                                else:
+                                    # Still too large — progressively scale down
+                                    for shrink in [0.75, 0.5, 0.35]:
+                                        cur_w, cur_h = img.size
+                                        img = img.resize((int(cur_w * shrink), int(cur_h * shrink)), Image.LANCZOS)
+                                        buf = io.BytesIO()
+                                        img.save(buf, format='JPEG', quality=50, optimize=True)
+                                        file_data = buf.getvalue()
+                                        if len(file_data) <= MAX_BYTES:
+                                            print(f"[Compress+Shrink] {f.filename}: {img.size[0]}x{img.size[1]}, size={len(file_data)/1024/1024:.1f}MB")
+                                            break
+
+                        except Exception as resize_err:
+                            print(f"[Resize/Compress Warning] {f.filename}: {resize_err}")
+
+                    b64 = base64.b64encode(file_data).decode('utf-8')
                     file_images.append({
                         'type': 'document' if fname.endswith('.pdf') else 'image',
                         'media_type': media_type, 'data': b64, 'filename': f.filename
