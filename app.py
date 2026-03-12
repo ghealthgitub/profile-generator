@@ -156,7 +156,7 @@ def generate():
             try:
                 client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
                 message = client.messages.create(
-                    model="claude-sonnet-4-20250514",
+                    model="claude-opus-4-6",
                     max_tokens=4000,
                     messages=[{"role": "user", "content": final_prompt}]
                 )
@@ -214,7 +214,7 @@ def generate_from_files():
                             import io
 
                             MAX_DIM = 7900       # stay safely under 8000px
-                            MAX_BYTES = 4.5 * 1024 * 1024  # stay safely under 5MB
+                            MAX_BYTES = 3.5 * 1024 * 1024  # ~3.5MB raw → ~4.7MB base64 (safely under 5MB)
 
                             img = Image.open(io.BytesIO(file_data))
                             w, h = img.size
@@ -308,7 +308,7 @@ def generate_from_files():
         content_parts.append({'type': 'text', 'text': final_prompt})
 
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-opus-4-6",
             max_tokens=4000,
             messages=[{"role": "user", "content": content_parts}]
         )
@@ -562,7 +562,7 @@ Return ONLY the JSON object."""
     try:
         client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-opus-4-6",
             max_tokens=1000,
             messages=[{"role": "user", "content": extract_prompt}]
         )
