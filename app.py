@@ -19,7 +19,8 @@ from utils.db_connector import (
     save_profile, update_profile_content, get_recent_profiles,
     get_profile_by_id, get_profile_stats,
     get_destinations_list, get_treatments_for_specialty,
-    push_doctor_to_admin, search_existing_doctors
+    push_doctor_to_admin, search_existing_doctors,
+    get_all_users, create_user, toggle_user_active, update_user_role
 )
 
 # Claude API
@@ -439,6 +440,55 @@ def api_save_prompt():
         data.get('set_active', False),
         session['user']['email']
     )
+    return jsonify({'success': ok})
+
+
+# ═══════════════════════════════════════════════════════════════
+# USER MANAGEMENT (admin only)
+# ═══════════════════════════════════════════════════════════════
+
+@app.route('/users')
+@admin_required
+def users_page():
+    users = get_all_users()
+    return render_template('users.html', user=session['user'], users=users)
+
+
+@app.route('/api/users', methods=['POST'])
+@admin_required
+def api_create_user():
+    data = request.json
+    name = data.get('name', '').strip()
+    email = data.get('email', '').strip()
+    password = data.get('password', '')
+    role = data.get('role', 'editor')
+
+    if not name or not email or not password:
+        return jsonify({'success': False, 'error': 'Name, email and password are required'}), 400
+    if role not in ('super_admin', 'editor'):
+        return jsonify({'success': False, 'error': 'Role must be super_admin or editor'}), 400
+    if len(password) < 6:
+        return jsonify({'success': False, 'error': 'Password must be at least 6 characters'}), 400
+
+    result = create_user(name, email, password, role)
+    return jsonify(result)
+
+
+@app.route('/api/users/<int:user_id>/toggle', methods=['POST'])
+@admin_required
+def api_toggle_user(user_id):
+    is_active = request.json.get('is_active', True)
+    ok = toggle_user_active(user_id, is_active)
+    return jsonify({'success': ok})
+
+
+@app.route('/api/users/<int:user_id>/role', methods=['POST'])
+@admin_required
+def api_update_role(user_id):
+    role = request.json.get('role', 'editor')
+    if role not in ('super_admin', 'editor'):
+        return jsonify({'success': False, 'error': 'Invalid role'}), 400
+    ok = update_user_role(user_id, role)
     return jsonify({'success': ok})
 
 

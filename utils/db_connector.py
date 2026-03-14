@@ -612,6 +612,91 @@ def search_existing_doctors(query=''):
         conn.close()
 
 
+# ── User Management ──────────────────────────────────────────
+
+def get_all_users():
+    """Get all users for the user management page"""
+    conn = get_conn()
+    if not conn:
+        return []
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, name, email, role, is_active, created_at
+                FROM users
+                ORDER BY created_at DESC
+            """)
+            return [dict(r) for r in cur.fetchall()]
+    except Exception as e:
+        print(f"[DB Error] get_all_users: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def create_user(name, email, password, role='editor'):
+    """Create a new user with hashed password"""
+    conn = get_conn()
+    if not conn:
+        return {'success': False, 'error': 'No database connection'}
+    try:
+        hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM users WHERE email = %s", [email])
+            if cur.fetchone():
+                return {'success': False, 'error': 'A user with this email already exists'}
+            cur.execute("""
+                INSERT INTO users (name, email, password, role, is_active, created_at)
+                VALUES (%s, %s, %s, %s, true, NOW())
+                RETURNING id
+            """, [name, email, hashed, role])
+            user_id = cur.fetchone()[0]
+            conn.commit()
+            return {'success': True, 'user_id': user_id}
+    except Exception as e:
+        print(f"[DB Error] create_user: {e}")
+        conn.rollback()
+        return {'success': False, 'error': str(e)}
+    finally:
+        conn.close()
+
+
+def toggle_user_active(user_id, is_active):
+    """Enable or disable a user"""
+    conn = get_conn()
+    if not conn:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE users SET is_active = %s WHERE id = %s", [is_active, user_id])
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"[DB Error] toggle_user_active: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def update_user_role(user_id, role):
+    """Update a user's role"""
+    conn = get_conn()
+    if not conn:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE users SET role = %s WHERE id = %s", [role, user_id])
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"[DB Error] update_user_role: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
 # ── Default Prompt ───────────────────────────────────────────
 
 DEFAULT_PROMPT = """You are a professional medical content writer for Ginger Healthcare (ginger.healthcare), a medical tourism platform.

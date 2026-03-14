@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Users — Ginger Universe</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="apple-touch-icon" href="/static/logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'DM Sans',sans-serif;background:#F0F2F5;color:#1F2937;min-height:100vh}
+        .topbar{background:linear-gradient(135deg,#0B2545,#13315C);color:white;padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+        .topbar-left{display:flex;align-items:center;gap:12px}
+        .topbar-logo{width:34px;height:34px;border-radius:9px;overflow:hidden;flex-shrink:0}
+        .topbar-logo img{width:100%;height:100%;object-fit:cover}
+        .topbar-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:700}
+        .topbar-nav{display:flex;gap:4px}
+        .topbar-nav a{color:rgba(255,255,255,.7);text-decoration:none;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:500;transition:all .2s}
+        .topbar-nav a:hover,.topbar-nav a.active{background:rgba(255,255,255,.1);color:white}
+        .topbar-right{display:flex;align-items:center;gap:14px;font-size:13px}
+        .btn-sm{padding:5px 14px;border-radius:6px;font-size:12px;font-weight:600;border:none;cursor:pointer;font-family:inherit;text-decoration:none}
+        .btn-ghost{background:rgba(255,255,255,.1);color:white}
+
+        .main{max-width:1100px;margin:24px auto;padding:0 20px}
+        .card{background:white;border-radius:12px;padding:24px;border:1px solid #E5E7EB;margin-bottom:20px}
+        .card h2{font-family:'Playfair Display',serif;font-size:18px;color:#0B2545;margin-bottom:16px}
+
+        .btn{padding:10px 22px;border:none;border-radius:8px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .2s}
+        .btn-teal{background:#0EA5A0;color:white}
+        .btn-teal:hover{background:#0C8C88}
+        .btn-outline{background:white;color:#374151;border:2px solid #D1D5DB}
+        .btn-outline:hover{border-color:#9CA3AF}
+        .btn-red{background:#FEE2E2;color:#DC2626;border:none}
+        .btn-red:hover{background:#FECACA}
+        .btn-green{background:#D1FAE5;color:#065F46;border:none}
+        .btn-green:hover{background:#A7F3D0}
+
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        th{text-align:left;padding:12px;background:#F9FAFB;border-bottom:2px solid #E5E7EB;font-weight:600;color:#6B7280;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+        td{padding:12px;border-bottom:1px solid #F3F4F6;vertical-align:middle}
+        tr:hover{background:#F9FAFB}
+
+        .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+        .badge-admin{background:rgba(139,92,246,.15);color:#7C3AED}
+        .badge-editor{background:rgba(59,130,246,.15);color:#2563EB}
+        .badge-active{background:#D1FAE5;color:#065F46}
+        .badge-inactive{background:#FEE2E2;color:#991B1B}
+
+        .form-row{margin-bottom:14px}
+        .form-row label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:5px}
+        .form-input,.form-select{
+            width:100%;padding:10px 12px;border:2px solid #E5E7EB;border-radius:8px;
+            font-size:14px;font-family:inherit;transition:border-color .2s;
+        }
+        .form-input:focus,.form-select:focus{outline:none;border-color:#0EA5A0;box-shadow:0 0 0 3px rgba(14,165,160,.08)}
+        .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+        .add-form{background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:20px;margin-bottom:20px}
+        .add-form h3{font-size:15px;font-weight:600;color:#0B2545;margin-bottom:14px}
+
+        .status-bar{padding:12px 16px;border-radius:8px;margin:12px 0;font-size:14px;font-weight:500;display:none}
+        .status-bar.success{display:block;background:#D1FAE5;color:#065F46;border:1px solid #A7F3D0}
+        .status-bar.error{display:block;background:#FEE2E2;color:#991B1B;border:1px solid #FECACA}
+
+        .actions{display:flex;gap:6px}
+
+        @media(max-width:768px){
+            .topbar-nav{display:none}
+            .form-grid{grid-template-columns:1fr}
+        }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <div class="topbar-left">
+            <div class="topbar-logo"><img src="/static/logo-small.png" alt="Ginger"></div>
+            <span class="topbar-title">Ginger Universe</span>
+        </div>
+        <div class="topbar-nav">
+            <a href="/dashboard">Generator</a>
+            <a href="/history">History</a>
+            <a href="/prompts">Prompts</a>
+            <a href="/users" class="active">Users</a>
+        </div>
+        <div class="topbar-right">
+            <span style="opacity:.7">{{ user.email }}</span>
+            <a href="/logout" class="btn-sm btn-ghost">Logout</a>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="card">
+            <h2>👥 User Management</h2>
+
+            <div id="statusBar" class="status-bar"></div>
+
+            <!-- Add User Form -->
+            <div class="add-form">
+                <h3>➕ Add New User</h3>
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label>Full Name</label>
+                        <input type="text" id="newName" class="form-input" placeholder="Dr. John Smith">
+                    </div>
+                    <div class="form-row">
+                        <label>Email</label>
+                        <input type="email" id="newEmail" class="form-input" placeholder="john@ginger.healthcare">
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label>Password</label>
+                        <input type="password" id="newPassword" class="form-input" placeholder="Min 6 characters">
+                    </div>
+                    <div class="form-row">
+                        <label>Role</label>
+                        <select id="newRole" class="form-select">
+                            <option value="editor">Editor — can generate & push profiles</option>
+                            <option value="super_admin">Super Admin — full access</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="margin-top:14px">
+                    <button class="btn btn-teal" onclick="addUser()">Create User</button>
+                </div>
+            </div>
+
+            <!-- Users Table -->
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersBody">
+                    {% for u in users %}
+                    <tr id="user-row-{{ u.id }}">
+                        <td style="font-weight:600">{{ u.name }}</td>
+                        <td>{{ u.email }}</td>
+                        <td>
+                            <select onchange="changeRole({{ u.id }}, this.value)" class="form-select" style="width:auto;padding:4px 8px;font-size:12px;border-width:1px">
+                                <option value="editor" {{ 'selected' if u.role == 'editor' }}>Editor</option>
+                                <option value="super_admin" {{ 'selected' if u.role == 'super_admin' }}>Super Admin</option>
+                            </select>
+                        </td>
+                        <td>
+                            {% if u.is_active %}
+                                <span class="badge badge-active">Active</span>
+                            {% else %}
+                                <span class="badge badge-inactive">Disabled</span>
+                            {% endif %}
+                        </td>
+                        <td style="color:#6B7280;font-size:12px">{{ u.created_at.strftime('%b %d, %Y') if u.created_at else '—' }}</td>
+                        <td class="actions">
+                            {% if u.is_active %}
+                                <button class="btn-sm btn-red" onclick="toggleUser({{ u.id }}, false)">Disable</button>
+                            {% else %}
+                                <button class="btn-sm btn-green" onclick="toggleUser({{ u.id }}, true)">Enable</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not users %}
+                    <tr><td colspan="6" style="text-align:center;padding:30px;color:#9CA3AF">No users found. Add one above.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function showStatus(msg, type) {
+            const bar = document.getElementById('statusBar');
+            bar.innerHTML = msg;
+            bar.className = 'status-bar ' + type;
+            if (type === 'success') setTimeout(() => { bar.className = 'status-bar'; }, 3000);
+        }
+
+        async function addUser() {
+            const name = document.getElementById('newName').value.trim();
+            const email = document.getElementById('newEmail').value.trim();
+            const password = document.getElementById('newPassword').value;
+            const role = document.getElementById('newRole').value;
+
+            if (!name || !email || !password) return showStatus('Please fill in all fields', 'error');
+
+            try {
+                const res = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ name, email, password, role })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showStatus('✅ User "' + name + '" created successfully!', 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showStatus('Error: ' + (data.error || 'Could not create user'), 'error');
+                }
+            } catch(e) {
+                showStatus('Network error: ' + e.message, 'error');
+            }
+        }
+
+        async function toggleUser(userId, isActive) {
+            try {
+                const res = await fetch('/api/users/' + userId + '/toggle', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ is_active: isActive })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showStatus(isActive ? '✅ User enabled' : '🚫 User disabled', 'success');
+                    setTimeout(() => location.reload(), 800);
+                } else showStatus('Failed to update user', 'error');
+            } catch(e) { showStatus('Error: ' + e.message, 'error'); }
+        }
+
+        async function changeRole(userId, role) {
+            try {
+                const res = await fetch('/api/users/' + userId + '/role', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ role })
+                });
+                const data = await res.json();
+                if (data.success) showStatus('✅ Role updated', 'success');
+                else showStatus('Failed to update role', 'error');
+            } catch(e) { showStatus('Error: ' + e.message, 'error'); }
+        }
+    </script>
+</body>
+</html>
