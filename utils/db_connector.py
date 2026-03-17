@@ -461,8 +461,16 @@ def push_doctor_to_admin(data, profile_id=None, user_email=''):
             if not name:
                 return {'success': False, 'error': 'Doctor name is required'}
 
-            slug = data.get('slug') or generate_doctor_slug(name)
             title = data.get('designation', '') or data.get('title', 'Dr.')
+
+            # Ensure name includes Dr./Prof. prefix for display and URL
+            title_prefix = data.get('title', 'Dr.').strip()
+            if title_prefix and not name.lower().startswith(title_prefix.lower().rstrip('.')):
+                display_name = f"{title_prefix} {name}"
+            else:
+                display_name = name
+
+            slug = data.get('slug') or generate_doctor_slug(display_name)
             specialty_id = data.get('specialty_id')
             hospital_id = data.get('hospital_id')
             destination_id = data.get('destination_id')
@@ -474,6 +482,10 @@ def push_doctor_to_admin(data, profile_id=None, user_email=''):
             city = data.get('city', '')
             country = data.get('country', '')
             meta_title = data.get('meta_title', '')
+            if not meta_title:
+                meta_title = f"{display_name} — Ginger Healthcare"
+            elif meta_title and not any(meta_title.lower().startswith(p) for p in ['dr.', 'dr ', 'prof.', 'prof ']):
+                meta_title = f"{title_prefix} {meta_title}" if title_prefix else meta_title
             meta_description = data.get('meta_description', '')
             status = data.get('status', 'draft')
             treatment_ids = data.get('treatment_ids', [])
@@ -504,7 +516,7 @@ def push_doctor_to_admin(data, profile_id=None, user_email=''):
                     WHERE id=%s
                     RETURNING id
                 """, [
-                    name, title, slug,
+                    display_name, title, slug,
                     specialty_text, specialty_id,
                     hospital_id, destination_id,
                     country, city,
@@ -527,7 +539,7 @@ def push_doctor_to_admin(data, profile_id=None, user_email=''):
                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     RETURNING id
                 """, [
-                    name, title, slug, specialty_text, specialty_id,
+                    display_name, title, slug, specialty_text, specialty_id,
                     hospital_id, destination_id, country, city,
                     experience_years, qualifications,
                     description, long_description, languages,
